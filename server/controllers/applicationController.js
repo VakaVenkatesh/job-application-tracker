@@ -7,17 +7,27 @@ const getApplications = asyncHandler(async (req, res) => {
   const { stage, source, search, sort, page = 1, limit = 50, archived } = req.query;
   const query = {};
 
+  if (req.user) {
+    query.$or = [{ user: req.user._id }, { user: { $exists: false } }];
+  }
+
   if (stage) query.stage = stage;
   if (source) query.source = source;
   if (archived === 'true') query.isArchived = true;
   else query.isArchived = false;
 
   if (search) {
-    query.$or = [
+    const searchConditions = [
       { title: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
       { tags: { $regex: search, $options: 'i' } }
     ];
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+      delete query.$or;
+    } else {
+      query.$or = searchConditions;
+    }
   }
 
   const sortOptions = {};
@@ -57,6 +67,9 @@ const getApplication = asyncHandler(async (req, res) => {
 // @desc    Create new application
 // @route   POST /api/applications
 const createApplication = asyncHandler(async (req, res) => {
+  if (req.user) {
+    req.body.user = req.user._id;
+  }
   const application = await Application.create(req.body);
   res.status(201).json({ success: true, data: application });
 });

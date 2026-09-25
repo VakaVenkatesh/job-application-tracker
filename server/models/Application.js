@@ -15,6 +15,9 @@ const noteSchema = new mongoose.Schema({
 }, { _id: true });
 
 const applicationSchema = new mongoose.Schema({
+  // User ownership
+  user:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+
   // Core job info
   title:        { type: String, required: true, index: true },
   company:      { type: String, required: true, index: true },

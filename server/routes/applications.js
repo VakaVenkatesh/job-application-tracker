@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { optionalProtect } = require('../middleware/authMiddleware');
 const {
   getApplications,
   getApplication,
@@ -13,6 +14,9 @@ const {
   updateContact,
   deleteContact
 } = require('../controllers/applicationController');
+
+// Attach optionalProtect to extract req.user if JWT is provided
+router.use(optionalProtect);
 
 // Main CRUD
 router.route('/')

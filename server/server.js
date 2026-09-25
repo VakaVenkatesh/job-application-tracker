@@ -14,11 +14,31 @@ connectDB();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Allowed Origins for CORS
+const allowedOrigins = [
+  'https://job-application-tracker-p2oh.onrender.com',
+  'https://job-application-tracker-black-nine.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5000',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 app.use(express.json());
 
 // API Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/applications', require('./routes/applications'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/sync', require('./routes/sync'));
