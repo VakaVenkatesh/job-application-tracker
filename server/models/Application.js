@@ -16,7 +16,8 @@ const noteSchema = new mongoose.Schema({
 
 const applicationSchema = new mongoose.Schema({
   // User ownership
-  user:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+  user:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  jobPosting:   { type: mongoose.Schema.Types.ObjectId, ref: 'JobPosting' },
 
   // Core job info
   title:        { type: String, required: true, index: true },
@@ -29,47 +30,43 @@ const applicationSchema = new mongoose.Schema({
     enum: ['full_time', 'part_time', 'contract', 'freelance', 'internship', 'other'],
     default: 'full_time'
   },
-  category:     { type: String, default: '' },
+  category:     { type: String, default: 'Engineering' },
   tags:         [{ type: String }],
   companyLogo:  { type: String, default: '' },
   description:  { type: String, default: '' },
+
+  // Skills & matching insights
+  requiredSkills: [{ type: String }],
+  missingSkills:  [{ type: String }],
+  matchScore:     { type: Number, default: 0 },
 
   // Pipeline tracking
   stage: {
     type: String,
     enum: ['wishlist', 'applied', 'screening', 'interviewing', 'offer', 'accepted', 'rejected', 'ghosted'],
-    default: 'wishlist',
+    default: 'applied',
     index: true
   },
 
-  // Recruiter contacts (embedded)
+  // Exam / Interview Next Round Tracking
+  nextRoundDate: { type: Date },
+  nextRoundType: {
+    type: String,
+    enum: ['online_assessment', 'technical_interview', 'hr_screening', 'system_design', 'managerial', 'final_round', 'assignment', 'offer_discussion', 'none'],
+    default: 'none'
+  },
+  nextRoundNotes: { type: String, default: '' },
+
+  // Recruiter contacts
   contacts: [contactSchema],
 
-  // Notes & activity log
+  // Notes & logs
   notes: [noteSchema],
-
-  // Cold email tracking
-  coldEmail: {
-    sent:         { type: Boolean, default: false },
-    sentDate:     { type: Date },
-    followUps:    { type: Number, default: 0 },
-    lastFollowUp: { type: Date },
-    template:     { type: String, default: '' }
-  },
 
   // Key dates
   dateDiscovered: { type: Date, default: Date.now },
-  dateApplied:    { type: Date },
+  dateApplied:    { type: Date, default: Date.now },
   dateResponse:   { type: Date },
-  nextFollowUp:   { type: Date },
-
-  // Source tracking
-  source: {
-    type: String,
-    enum: ['remotive', 'arbeitnow', 'manual', 'linkedin', 'indeed', 'other'],
-    default: 'manual'
-  },
-  externalId: { type: String },
 
   // Priority & rating
   priority:   { type: Number, min: 1, max: 5, default: 3 },
@@ -79,9 +76,6 @@ const applicationSchema = new mongoose.Schema({
   isArchived: { type: Boolean, default: false }
 
 }, { timestamps: true });
-
-// Compound index for deduplication of imported jobs
-applicationSchema.index({ externalId: 1, source: 1 }, { unique: true, sparse: true });
 
 // Text index for full-text search
 applicationSchema.index({ title: 'text', company: 'text', description: 'text' });

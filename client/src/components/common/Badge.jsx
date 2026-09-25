@@ -1,25 +1,33 @@
 import React from 'react';
-import { STAGE_MAP, COLD_EMAIL_STATUSES } from '../../utils/constants';
+import { STAGES } from '../../utils/constants';
 
-export const StageBadge = ({ stageId, className = '' }) => {
-  const stage = STAGE_MAP[stageId] || { label: stageId, bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' };
-
+export const Badge = ({ label, color = '#00f5a0', bg, text, border, className = '' }) => {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${stage.bg} ${stage.text} ${stage.border} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border ${className}`}
+      style={{
+        backgroundColor: bg ? undefined : `${color}15`,
+        color: text ? undefined : color,
+        borderColor: border ? undefined : `${color}40`
+      }}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color || '#94a3b8' }} />
-      {stage.label}
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+      {label}
     </span>
   );
+};
+
+export const StageBadge = ({ stageId, className = '' }) => {
+  const stage = STAGES[stageId] || { label: stageId, color: '#94a3b8' };
+  return <Badge label={stage.label} color={stage.color} className={className} />;
 };
 
 export const ColdEmailBadge = ({ statusId, className = '' }) => {
-  const status = COLD_EMAIL_STATUSES.find(s => s.id === statusId) || { label: statusId || 'Not Sent', color: 'text-slate-400', bg: 'bg-slate-800/80' };
-
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${status.bg} ${status.color} border border-white/5 ${className}`}>
-      ✉️ {status.label}
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-gray-400 bg-white/5 border border-white/10 ${className}`}>
+      {statusId || 'Active'}
     </span>
   );
 };
+
+export default Badge;

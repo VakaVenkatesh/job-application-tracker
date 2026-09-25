@@ -1,250 +1,499 @@
 import React, { useState } from 'react';
-import { useFetchLiveJobs, useImportJob } from '../hooks/useSync';
-import { useApplications } from '../hooks/useApplications';
-import { EmptyState } from '../components/common/EmptyState';
-import { Modal } from '../components/common/Modal';
-import { formatSalary } from '../utils/formatters';
-import { FiCompass, FiPlus, FiExternalLink, FiCheck, FiMapPin, FiBriefcase, FiDollarSign, FiZap } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useJobs, useGlobalJobStats } from '../hooks/useJobs';
+import { useAuth } from '../context/AuthContext';
+import {
+  FiSearch,
+  FiFilter,
+  FiBriefcase,
+  FiMapPin,
+  FiDollarSign,
+  FiExternalLink,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiZap,
+  FiUsers,
+  FiClock,
+  FiPlus,
+  FiTag,
+  FiShield,
+  FiX
+} from 'react-icons/fi';
+import Modal from '../components/common/Modal';
+import Badge from '../components/common/Badge';
+import { JOB_TYPE_LABELS } from '../utils/constants';
 
-export const JobDiscovery = ({ onSelectApplication }) => {
-  const [source, setSource] = useState('remotive');
-  const [previewJob, setPreviewJob] = useState(null);
+export default function JobDiscovery() {
+  const { isAuthenticated } = useAuth();
+  const [filters, setFilters] = useState({
+    search: '',
+    category: 'all',
+    jobType: 'all',
+    experienceLevel: 'all',
+    location: 'all',
+    sort: 'newest',
+    page: 1,
+    limit: 24
+  });
 
-  const { data: liveJobs = [], isLoading, error, refetch } = useFetchLiveJobs(source);
-  const { data: existingApps = [] } = useApplications();
-  const importJobMutation = useImportJob();
+  const { jobs, total, pages, currentPage, isLoading, applyToJob, isApplying } = useJobs(filters);
+  const { data: globalStats } = useGlobalJobStats();
 
-  const importedMap = new Set(
-    existingApps.map(a => `${a.company.toLowerCase()}-${a.title.toLowerCase()}`)
-  );
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
 
-  const isAlreadyImported = (job) => {
-    const key = `${job.company.toLowerCase()}-${job.title.toLowerCase()}`;
-    return importedMap.has(key);
+  const handleApply = (job) => {
+    // Record application in DB
+    applyToJob({ jobId: job._id });
+    // Open external URL in new tab
+    if (job.jobUrl) {
+      window.open(job.jobUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
-  const handleImport = (job) => {
-    importJobMutation.mutate(job);
+  const getCompanyLogo = (job) => {
+    if (job.companyLogo) return job.companyLogo;
+    const clean = (job.company || 'tech').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `https://logo.clearbit.com/${clean}.com`;
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-[#081210]/90 border border-[#00f5a0]/20 shadow-xl backdrop-blur-md">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00f5a0] animate-ping" />
-            <span className="text-[10px] font-extrabold text-[#00f5a0] uppercase tracking-wider">
-              PUBLIC API AGGREGATOR
-            </span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            Live Job Discovery Portal <FiCompass className="text-[#00f5a0]" />
-          </h1>
-          <p className="text-zinc-400 text-xs sm:text-sm mt-1 max-w-2xl">
-            Browse real active job postings directly from remote public APIs and import them into your Wishlist pipeline with a single click.
-          </p>
-        </div>
+    <div className="space-y-8 pb-12 max-w-7xl mx-auto">
+      {/* Top Hero Banner */}
+      <div className="relative rounded-3xl bg-gradient-to-r from-[#081512] via-[#0b1d19] to-[#050e0c] border border-[#00f5a0]/25 p-8 md:p-10 overflow-hidden shadow-2xl">
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#00f5a0]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* API Source Switcher */}
-        <div className="flex items-center gap-2 bg-[#040908] p-1.5 rounded-2xl border border-[#00f5a0]/20 self-start md:self-auto">
-          <button
-            onClick={() => setSource('remotive')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase transition-all ${
-              source === 'remotive'
-                ? 'bg-[#00f5a0] text-black shadow-[0_0_15px_rgba(0,245,160,0.4)]'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Remotive API
-          </button>
-          <button
-            onClick={() => setSource('arbeitnow')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase transition-all ${
-              source === 'arbeitnow'
-                ? 'bg-[#00f5a0] text-black shadow-[0_0_15px_rgba(0,245,160,0.4)]'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Arbeitnow API
-          </button>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="max-w-2xl space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00f5a0]/10 border border-[#00f5a0]/30 text-xs font-mono text-[#00f5a0]">
+              <span className="w-2 h-2 rounded-full bg-[#00f5a0] animate-ping" />
+              LIVE OPPORTUNITIES & FREELANCE CONTRACTS
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              Verified Open Jobs & Freelancing Hub
+            </h1>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Explore open roles across top tech companies and high-paying freelance gigs. Click any card to inspect skill relevance and discover missing keywords before you apply.
+            </p>
+          </div>
+
+          {/* Quick Metrics from DB */}
+          <div className="flex flex-wrap lg:flex-col gap-3">
+            <div className="px-5 py-3 rounded-2xl bg-[#040908]/90 border border-[#00f5a0]/20 flex items-center gap-4">
+              <div className="p-2.5 rounded-xl bg-[#00f5a0]/15 text-[#00f5a0]">
+                <FiBriefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-mono">ACTIVE POSTINGS</p>
+                <p className="text-xl font-black text-white font-mono">{globalStats?.totalJobs || total || '120+'}</p>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 rounded-2xl bg-[#040908]/90 border border-[#00f5a0]/20 flex items-center gap-4">
+              <div className="p-2.5 rounded-xl bg-[#38bdf8]/15 text-[#38bdf8]">
+                <FiUsers className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-mono">APPLICATIONS LOGGED</p>
+                <p className="text-xl font-black text-white font-mono">{globalStats?.totalApplications || '540+'}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Live Jobs Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-56 bg-[#081210] rounded-3xl animate-pulse" />
+      {/* Search & Filter Matrix */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          {/* Main Keyword Search Bar */}
+          <div className="md:col-span-6 relative">
+            <FiSearch className="absolute left-4 top-3.5 w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
+              placeholder="Search by role, company, or tech stack (e.g. React, Python, Remote)..."
+              className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#08100e] border border-white/10 text-white placeholder-gray-500 text-sm focus:border-[#00f5a0] focus:outline-none transition-all shadow-inner"
+            />
+            {filters.search && (
+              <button
+                onClick={() => setFilters({ ...filters, search: '', page: 1 })}
+                className="absolute right-4 top-3.5 text-gray-400 hover:text-white"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Job Type Filter */}
+          <div className="md:col-span-3">
+            <select
+              value={filters.jobType}
+              onChange={(e) => setFilters({ ...filters, jobType: e.target.value, page: 1 })}
+              className="w-full px-4 py-3 rounded-2xl bg-[#08100e] border border-white/10 text-white text-sm focus:border-[#00f5a0] focus:outline-none transition-all"
+            >
+              <option value="all">All Employment Types</option>
+              <option value="full_time">Full Time</option>
+              <option value="freelance">Freelance Gigs</option>
+              <option value="contract">Contract</option>
+              <option value="internship">Internships</option>
+            </select>
+          </div>
+
+          {/* Experience Filter */}
+          <div className="md:col-span-3">
+            <select
+              value={filters.experienceLevel}
+              onChange={(e) => setFilters({ ...filters, experienceLevel: e.target.value, page: 1 })}
+              className="w-full px-4 py-3 rounded-2xl bg-[#08100e] border border-white/10 text-white text-sm focus:border-[#00f5a0] focus:outline-none transition-all"
+            >
+              <option value="all">All Experience Levels</option>
+              <option value="fresher">Fresher / Graduate</option>
+              <option value="junior">Junior (1-3 yrs)</option>
+              <option value="mid">Mid Level (3-5 yrs)</option>
+              <option value="senior">Senior (5+ yrs)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Quick Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-xs text-gray-500 font-mono flex items-center gap-1 mr-1">
+            <FiFilter className="w-3 h-3" /> Quick Filter:
+          </span>
+          {['all', 'Remote', 'Engineering', 'Frontend', 'Backend', 'AI & Data', 'Mobile'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilters({
+                ...filters,
+                location: cat === 'Remote' ? (filters.location === 'Remote' ? 'all' : 'Remote') : filters.location,
+                category: cat !== 'Remote' ? (cat === 'all' ? 'all' : cat) : filters.category,
+                page: 1
+              })}
+              className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                (cat === 'Remote' && filters.location === 'Remote') || (cat !== 'Remote' && filters.category === cat)
+                  ? 'bg-[#00f5a0] text-black font-bold shadow-[0_0_12px_rgba(0,245,160,0.3)]'
+                  : 'bg-[#08100e] text-gray-400 hover:text-white border border-white/5'
+              }`}
+            >
+              {cat === 'all' ? 'All Domains' : cat}
+            </button>
           ))}
         </div>
-      ) : error ? (
-        <div className="p-8 text-center bg-[#081210] rounded-3xl border border-rose-900/50">
-          <p className="text-rose-400 font-semibold mb-2">Failed to fetch live job postings</p>
-          <p className="text-zinc-400 text-xs mb-4">{error.message}</p>
-          <button onClick={() => refetch()} className="px-4 py-2 bg-[#00f5a0] text-black rounded-xl text-xs font-bold uppercase">
-            Retry Fetching
+      </div>
+
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 rounded-2xl bg-[#08100e]/60 border border-white/5 animate-pulse p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/10" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-white/10 rounded w-3/4" />
+                  <div className="h-3 bg-white/10 rounded w-1/2" />
+                </div>
+              </div>
+              <div className="h-3 bg-white/10 rounded w-full" />
+              <div className="h-3 bg-white/10 rounded w-4/5" />
+            </div>
+          ))}
+        </div>
+      ) : jobs.length === 0 ? (
+        /* Empty State */
+        <div className="text-center py-16 px-4 rounded-3xl bg-[#08100e] border border-white/10 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#00f5a0]/10 border border-[#00f5a0]/20 flex items-center justify-center mx-auto text-[#00f5a0]">
+            <FiSearch className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-white">No jobs matched your current filters</h3>
+          <p className="text-sm text-gray-400 max-w-md mx-auto">
+            Try adjusting your search terms or clearing some filters to explore more verified postings.
+          </p>
+          <button
+            onClick={() => setFilters({
+              search: '',
+              category: 'all',
+              jobType: 'all',
+              experienceLevel: 'all',
+              location: 'all',
+              sort: 'newest',
+              page: 1,
+              limit: 24
+            })}
+            className="px-5 py-2.5 rounded-xl bg-[#00f5a0]/20 text-[#00f5a0] border border-[#00f5a0]/30 hover:bg-[#00f5a0]/30 text-xs font-mono"
+          >
+            Clear All Filters
           </button>
         </div>
-      ) : liveJobs.length === 0 ? (
-        <EmptyState
-          title="No live jobs retrieved"
-          description="Try switching the API provider source or refresh."
-          actionLabel="Refresh Jobs"
-          onAction={() => refetch()}
-        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {liveJobs.map((job, idx) => {
-            const imported = isAlreadyImported(job);
+        /* Job Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {jobs.map((job) => {
+            const hasMissingSkills = job.missingSkills && job.missingSkills.length > 0;
+            const matchScore = job.matchScore !== null ? job.matchScore : null;
+
             return (
-              <div
-                key={idx}
-                className="p-5 rounded-3xl bg-[#081210]/90 border border-[#00f5a0]/15 hover:border-[#00f5a0]/40 transition-all flex flex-col justify-between space-y-4 group shadow-xl hover:shadow-[0_0_25px_rgba(0,245,160,0.15)]"
+              <motion.div
+                key={job._id}
+                whileHover={{ y: -4, borderColor: 'rgba(0, 245, 160, 0.4)' }}
+                onClick={() => setSelectedJob(job)}
+                className="group relative rounded-2xl bg-[#08100e] border border-white/10 hover:border-[#00f5a0]/40 p-5 flex flex-col justify-between cursor-pointer transition-all shadow-lg hover:shadow-[0_10px_30px_rgba(0,245,160,0.1)]"
               >
+                {/* Top Card: Company Logo & Basic Meta */}
                 <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-3.5">
                     <div className="flex items-center gap-3">
-                      {job.companyLogo ? (
+                      <div className="w-12 h-12 rounded-xl bg-[#040807] border border-white/10 p-1.5 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                         <img
-                          src={job.companyLogo}
+                          src={getCompanyLogo(job)}
                           alt={job.company}
-                          className="w-10 h-10 rounded-xl object-contain bg-[#040908] p-1 border border-white/10"
-                          onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(job.company)}&background=00f5a0&color=000&bold=true`;
+                          }}
                         />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-[#040908] border border-[#00f5a0]/30 text-[#00f5a0] font-bold text-base flex items-center justify-center">
-                          {job.company ? job.company.charAt(0).toUpperCase() : '?'}
-                        </div>
-                      )}
+                      </div>
                       <div>
-                        <h4 className="font-semibold text-xs text-zinc-400">{job.company}</h4>
-                        <h3 className="font-extrabold text-sm text-white line-clamp-1 group-hover:text-[#00f5a0] transition-colors">
+                        <span className="text-xs font-mono text-gray-400 group-hover:text-gray-300 transition-colors">
+                          {job.company}
+                        </span>
+                        <h3 className="text-base font-bold text-white line-clamp-1 group-hover:text-[#00f5a0] transition-colors">
                           {job.title}
                         </h3>
                       </div>
                     </div>
 
-                    {job.jobUrl && (
-                      <a
-                        href={job.jobUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-zinc-500 hover:text-[#00f5a0] p-1 rounded-lg hover:bg-[#040908]"
-                        title="View external job post"
+                    {/* Match Score Badge (if user logged in) */}
+                    {matchScore !== null ? (
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
+                          matchScore >= 80
+                            ? 'bg-[#00f5a0]/15 text-[#00f5a0] border-[#00f5a0]/40'
+                            : matchScore >= 50
+                            ? 'bg-amber-400/15 text-amber-400 border-amber-400/40'
+                            : 'bg-red-400/15 text-red-400 border-red-400/40'
+                        }`}
                       >
-                        <FiExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mb-3">
-                    <span className="flex items-center gap-1">
-                      <FiMapPin className="text-zinc-500" /> {job.location || 'Remote'}
-                    </span>
-                    {(job.salaryMin || job.salaryMax) && (
-                      <span className="flex items-center gap-1 text-[#00f5a0] font-bold">
-                        <FiDollarSign /> {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
+                        {matchScore}% Match
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10">
+                        {JOB_TYPE_LABELS[job.jobType] || job.jobType}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-                    {job.description || 'No detailed description available.'}
-                  </p>
-
-                  {job.tags && job.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {job.tags.slice(0, 3).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 text-[10px] font-semibold bg-[#040908] text-zinc-300 rounded-lg border border-white/10">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                  <button
-                    onClick={() => setPreviewJob(job)}
-                    className="text-xs font-bold text-zinc-400 hover:text-white uppercase tracking-wider"
-                  >
-                    Preview Details
-                  </button>
-
-                  <button
-                    onClick={() => handleImport(job)}
-                    disabled={imported || importJobMutation.isPending}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase transition-all ${
-                      imported
-                        ? 'bg-[#040908] text-[#00f5a0] border border-[#00f5a0]/30 cursor-default'
-                        : 'bg-[#00f5a0] hover:bg-[#00d294] text-black shadow-[0_0_15px_rgba(0,245,160,0.3)]'
-                    }`}
-                  >
-                    {imported ? (
-                      <>
-                        <FiCheck className="w-3.5 h-3.5" />
-                        <span>In Wishlist</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiPlus className="w-3.5 h-3.5 text-black" />
-                        <span>Import Job</span>
-                      </>
+                  {/* Location & Compensation */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 font-mono mb-4">
+                    <span className="flex items-center gap-1">
+                      <FiMapPin className="w-3.5 h-3.5 text-[#00f5a0]" /> {job.location || 'Remote'}
+                    </span>
+                    {job.salary && (
+                      <span className="flex items-center gap-1 text-gray-300">
+                        <FiDollarSign className="w-3.5 h-3.5 text-cyan-400" /> {job.salary}
+                      </span>
                     )}
+                  </div>
+
+                  {/* Required Tech Skills Pills */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {(job.requiredSkills || []).slice(0, 4).map((skill) => (
+                      <span
+                        key={skill}
+                        className="px-2 py-0.5 rounded-md bg-[#040807] border border-white/10 text-gray-300 text-[11px] font-mono"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                    {(job.requiredSkills || []).length > 4 && (
+                      <span className="px-1.5 py-0.5 rounded-md text-gray-500 text-[10px] font-mono">
+                        +{job.requiredSkills.length - 4} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Card Footer: Missing Skills Alert or Status */}
+                <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+                  {isAuthenticated && hasMissingSkills ? (
+                    <span className="text-amber-400/90 text-[11px] font-mono flex items-center gap-1 truncate">
+                      <FiAlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                      Missing: {job.missingSkills.slice(0, 2).join(', ')}
+                      {job.missingSkills.length > 2 && ` +${job.missingSkills.length - 2}`}
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 text-[11px] font-mono flex items-center gap-1">
+                      <FiUsers className="w-3.5 h-3.5 text-gray-400" /> {job.applicantCount || 0} Applicants
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleApply(job);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#00f5a0]/15 hover:bg-[#00f5a0] text-[#00f5a0] hover:text-black font-bold text-xs font-mono transition-all flex items-center gap-1.5 group-hover:bg-[#00f5a0] group-hover:text-black"
+                  >
+                    Apply Now <FiExternalLink className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
 
-      {/* Preview Job Modal */}
-      {previewJob && (
-        <Modal
-          isOpen={!!previewJob}
-          onClose={() => setPreviewJob(null)}
-          title={`Job Preview: ${previewJob.title}`}
-          maxWidth="max-w-2xl"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              {previewJob.companyLogo && (
-                <img src={previewJob.companyLogo} alt={previewJob.company} className="w-12 h-12 rounded-xl bg-[#040908] p-1 border border-white/10" />
+      {/* ================= DETAILED JOB OPPORTUNITY MODAL ================= */}
+      <Modal
+        isOpen={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+        title={selectedJob ? `${selectedJob.title} @ ${selectedJob.company}` : ''}
+        size="lg"
+      >
+        {selectedJob && (
+          <div className="space-y-6">
+            {/* Top Modal Header with Logo & Match Status */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#040807] p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-[#08100e] border border-white/10 p-2 flex items-center justify-center shrink-0">
+                  <img
+                    src={getCompanyLogo(selectedJob)}
+                    alt={selectedJob.company}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedJob.company)}&background=00f5a0&color=000&bold=true`;
+                    }}
+                  />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{selectedJob.title}</h3>
+                  <p className="text-xs text-gray-400 font-mono flex items-center gap-2">
+                    <span>{selectedJob.company}</span>
+                    <span>•</span>
+                    <span className="text-[#00f5a0]">{selectedJob.location || 'Remote'}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Match Gauge */}
+              {selectedJob.matchScore !== null && (
+                <div className="flex items-center gap-3 bg-[#08100e] px-4 py-2.5 rounded-xl border border-[#00f5a0]/30">
+                  <FiZap className="w-5 h-5 text-[#00f5a0]" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-mono">YOUR RELEVANCE</p>
+                    <p className="text-lg font-black text-[#00f5a0] font-mono leading-none">
+                      {selectedJob.matchScore}% Match
+                    </p>
+                  </div>
+                </div>
               )}
-              <div>
-                <h3 className="font-bold text-lg text-white">{previewJob.title}</h3>
-                <p className="text-sm text-[#00f5a0] font-semibold">{previewJob.company} • {previewJob.location}</p>
+            </div>
+
+            {/* KEY METRICS GRID */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div className="p-3 rounded-xl bg-[#08100e] border border-white/5">
+                <p className="text-gray-500 text-[10px]">COMPENSATION</p>
+                <p className="text-white font-semibold mt-0.5">{selectedJob.salary || 'Competitive'}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#08100e] border border-white/5">
+                <p className="text-gray-500 text-[10px]">JOB TYPE</p>
+                <p className="text-cyan-400 font-semibold mt-0.5 capitalize">{selectedJob.jobType?.replace('_', ' ')}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#08100e] border border-white/5">
+                <p className="text-gray-500 text-[10px]">EXPERIENCE</p>
+                <p className="text-purple-400 font-semibold mt-0.5 capitalize">{selectedJob.experienceLevel || 'Any'}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#08100e] border border-white/5">
+                <p className="text-gray-500 text-[10px]">APPLICANTS</p>
+                <p className="text-[#00f5a0] font-semibold mt-0.5">{selectedJob.applicantCount || 0} Registered</p>
               </div>
             </div>
 
-            <div className="p-4 bg-[#040908] rounded-2xl border border-[#00f5a0]/20 max-h-80 overflow-y-auto custom-scrollbar text-xs text-zinc-300 leading-relaxed space-y-2">
-              <h4 className="font-bold text-white text-sm">Description</h4>
-              <p className="whitespace-pre-wrap">{previewJob.description}</p>
+            {/* SKILL ANALYSIS BREAKDOWN */}
+            <div className="p-4 rounded-2xl bg-[#08100e] border border-[#00f5a0]/20 space-y-3">
+              <h4 className="text-xs font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <FiShield className="w-4 h-4 text-[#00f5a0]" /> Skill Match & Gap Breakdown
+              </h4>
+
+              {/* Matched Skills */}
+              {selectedJob.matchedSkills && selectedJob.matchedSkills.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-gray-400 font-mono mb-1.5 flex items-center gap-1 text-[#00f5a0]">
+                    <FiCheckCircle className="w-3.5 h-3.5" /> Skills You Possess ({selectedJob.matchedSkills.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedJob.matchedSkills.map((s) => (
+                      <span
+                        key={s}
+                        className="px-2.5 py-1 rounded-md bg-[#00f5a0]/15 border border-[#00f5a0]/40 text-[#00f5a0] text-xs font-mono"
+                      >
+                        ✓ {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing Skills */}
+              {selectedJob.missingSkills && selectedJob.missingSkills.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-gray-400 font-mono mb-1.5 flex items-center gap-1 text-amber-400">
+                    <FiAlertCircle className="w-3.5 h-3.5" /> Missing Skills To Prepare For ({selectedJob.missingSkills.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedJob.missingSkills.map((s) => (
+                      <span
+                        key={s}
+                        className="px-2.5 py-1 rounded-md bg-amber-400/15 border border-amber-400/40 text-amber-400 text-xs font-mono"
+                      >
+                        ! {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!isAuthenticated && (
+                <p className="text-xs text-gray-400 font-mono italic">
+                  💡 Sign in and fill your Profile Skills to automatically see which keywords you have or are missing!
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            {/* Description */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">Role Description</h4>
+              <div className="p-4 rounded-2xl bg-[#08100e] border border-white/5 text-gray-300 text-sm leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
+                {selectedJob.description || 'No detailed description provided by the recruiter.'}
+              </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
               <button
-                onClick={() => setPreviewJob(null)}
-                className="px-4 py-2 bg-[#040908] text-zinc-400 hover:text-white rounded-xl text-xs font-bold uppercase"
+                type="button"
+                onClick={() => setSelectedJob(null)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-mono transition-colors"
               >
                 Close
               </button>
+
               <button
-                onClick={() => {
-                  handleImport(previewJob);
-                  setPreviewJob(null);
-                }}
-                disabled={isAlreadyImported(previewJob)}
-                className="px-5 py-2 bg-[#00f5a0] hover:bg-[#00d294] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-[0_0_15px_rgba(0,245,160,0.3)]"
+                type="button"
+                onClick={() => handleApply(selectedJob)}
+                disabled={isApplying}
+                className="px-6 py-2.5 rounded-xl bg-[#00f5a0] hover:bg-[#00d88d] text-black font-bold text-xs font-mono flex items-center gap-2 shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all active:scale-95 disabled:opacity-50"
               >
-                {isAlreadyImported(previewJob) ? 'Already in Wishlist' : 'Import Job Now'}
+                <span>Apply On Original Job Page</span>
+                <FiExternalLink className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </div>
   );
-};
+}

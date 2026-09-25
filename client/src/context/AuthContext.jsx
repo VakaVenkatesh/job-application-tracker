@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 
@@ -10,29 +10,29 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch current user if token exists on mount
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (!token) {
-        setIsLoading(false);
-        return;
+  const refreshUser = useCallback(async () => {
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const response = await api.get('/auth/me');
+      if (response.success && response.data) {
+        setUser(response.data);
       }
-      try {
-        const response = await api.get('/auth/me');
-        if (response.success && response.data) {
-          setUser(response.data);
-        }
-      } catch (err) {
-        console.error('Failed to restore session:', err.message);
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUser();
+    } catch (err) {
+      console.error('Failed to restore session:', err.message);
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [token]);
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   // Login handler
   const login = async (email, password) => {
@@ -78,6 +78,11 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
+  // Update local user state
+  const updateUser = (data) => {
+    setUser(prev => ({ ...prev, ...data }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -87,7 +92,9 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
-        logout
+        logout,
+        updateUser,
+        refreshUser
       }}
     >
       {children}

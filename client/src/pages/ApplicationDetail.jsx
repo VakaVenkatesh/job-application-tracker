@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApplication, useUpdateApplication, useDeleteApplication, useAddContact, useAddNote } from '../hooks/useApplications';
-import { StageBadge, ColdEmailBadge } from '../components/common/Badge';
-import { ContactFormModal } from '../components/forms/ContactFormModal';
-import { NoteFormModal } from '../components/forms/NoteFormModal';
-import { ApplicationFormModal } from '../components/forms/ApplicationFormModal';
-import { ConfirmModal } from '../components/common/ConfirmModal';
-import { STAGES, COLD_EMAIL_STATUSES } from '../utils/constants';
-import { formatDate, formatSalary, formatRelativeTime } from '../utils/formatters';
+import Badge from '../components/common/Badge';
+import Modal from '../components/common/Modal';
+import ConfirmModal from '../components/common/ConfirmModal';
+import ApplicationFormModal from '../components/forms/ApplicationFormModal';
+import { STAGES } from '../utils/constants';
+import { formatDate, formatRelativeTime } from '../utils/formatters';
 import {
   FiArrowLeft,
   FiEdit3,
@@ -15,45 +15,62 @@ import {
   FiMapPin,
   FiDollarSign,
   FiClock,
-  FiUserPlus,
-  FiFileText,
-  FiMail,
-  FiLinkedin,
+  FiCalendar,
+  FiAlertCircle,
+  FiCheckCircle,
   FiPlus,
-  FiCopy
+  FiFileText,
+  FiShield,
+  FiUserPlus,
+  FiLinkedin,
+  FiMail
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-export const ApplicationDetail = ({ applicationId, onBack }) => {
+const NEXT_ROUND_LABELS = {
+  online_assessment: 'Online Assessment / Coding Exam',
+  technical_interview: 'Technical Interview (Live Coding)',
+  hr_screening: 'HR Screening & Culture Fit',
+  system_design: 'System Design / Architecture',
+  managerial: 'Managerial Round',
+  final_round: 'Final Executive Round',
+  assignment: 'Take-home Assignment',
+  offer_discussion: 'Offer Discussion',
+  none: 'No Round Scheduled'
+};
+
+export default function ApplicationDetail() {
+  const { id: applicationId } = useParams();
+  const navigate = useNavigate();
+
   const { data: app, isLoading, error } = useApplication(applicationId);
   const updateMutation = useUpdateApplication();
   const deleteMutation = useDeleteApplication();
-  const addContactMutation = useAddContact();
   const addNoteMutation = useAddNote();
+  const addContactMutation = useAddContact();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [showEmailTemplate, setShowEmailTemplate] = useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactData, setContactData] = useState({ name: '', role: '', email: '', linkedin: '', notes: '' });
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
-        <div className="h-8 w-32 bg-slate-800 rounded animate-pulse" />
-        <div className="h-48 bg-slate-900 rounded-2xl animate-pulse" />
-        <div className="h-64 bg-slate-900 rounded-2xl animate-pulse" />
+      <div className="flex items-center justify-center py-24">
+        <div className="w-10 h-10 border-2 border-[#00f5a0] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error || !app) {
     return (
-      <div className="p-8 text-center max-w-xl mx-auto">
-        <p className="text-red-400 font-semibold mb-4">Application not found</p>
-        <button onClick={onBack} className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-sm">
+      <div className="p-8 text-center max-w-xl mx-auto space-y-4">
+        <p className="text-red-400 font-semibold">Application not found</p>
+        <Link to="/applications" className="px-5 py-2.5 bg-[#08100e] text-white rounded-xl text-xs font-mono inline-block">
           Return to applications list
-        </button>
+        </Link>
       </div>
     );
   }
@@ -66,365 +83,382 @@ export const ApplicationDetail = ({ applicationId, onBack }) => {
 
   const handleDelete = () => {
     deleteMutation.mutate(app._id, {
-      onSuccess: () => onBack()
+      onSuccess: () => navigate('/applications')
     });
   };
 
-  const handleAddContact = (contactData) => {
+  const handleAddNote = (e) => {
+    e.preventDefault();
+    if (!noteContent.trim()) return;
+    addNoteMutation.mutate({ id: app._id, content: noteContent.trim() }, {
+      onSuccess: () => {
+        setNoteContent('');
+        setIsNoteModalOpen(false);
+      }
+    });
+  };
+
+  const handleAddContact = (e) => {
+    e.preventDefault();
+    if (!contactData.name.trim()) return;
     addContactMutation.mutate({ id: app._id, contact: contactData }, {
-      onSuccess: () => setIsContactModalOpen(false)
+      onSuccess: () => {
+        setContactData({ name: '', role: '', email: '', linkedin: '', notes: '' });
+        setIsContactModalOpen(false);
+      }
     });
   };
 
-  const handleAddNote = (noteData) => {
-    addNoteMutation.mutate({ id: app._id, note: noteData }, {
-      onSuccess: () => setIsNoteModalOpen(false)
-    });
+  const getCompanyLogo = () => {
+    if (app.companyLogo) return app.companyLogo;
+    const clean = (app.company || 'tech').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `https://logo.clearbit.com/${clean}.com`;
   };
 
-  const generateColdEmailText = (contactName = 'Hiring Team') => {
-    return `Hi ${contactName},
-
-I recently saw the ${app.title} opening at ${app.company} and wanted to reach out directly. 
-
-With my experience in full-stack web development and software engineering, I’m particularly drawn to ${app.company}'s work. I've attached my resume and would welcome the opportunity to discuss how my skills align with your engineering goals.
-
-Best regards,
-[Your Name]
-[Your Portfolio / LinkedIn]`;
-  };
-
-  const copyEmailTemplate = () => {
-    const text = generateColdEmailText();
-    navigator.clipboard.writeText(text);
-    toast.success('Cold email template copied to clipboard!');
-  };
+  const stageInfo = STAGES[app.stage] || { label: app.stage, color: '#00f5a0' };
+  const hasNextRound = app.nextRoundDate && new Date(app.nextRoundDate) > new Date();
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
-      {/* Back Button & Top Navigation */}
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      {/* Top Navigation */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold transition-colors"
+        <Link
+          to="/applications"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-xs font-mono transition-colors"
         >
-          <FiArrowLeft className="w-4 h-4" />
-          Back to Pipeline
-        </button>
+          <FiArrowLeft className="w-4 h-4" /> Back to Tracked Applications
+        </Link>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsEditModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#08100e] hover:bg-[#0c1815] border border-white/10 rounded-xl text-xs font-mono text-white transition-all cursor-pointer"
           >
-            <FiEdit3 className="w-3.5 h-3.5 text-indigo-400" />
-            Edit Entry
+            <FiEdit3 className="w-3.5 h-3.5 text-[#00f5a0]" /> Edit Details
           </button>
           <button
             onClick={() => setIsDeleteModalOpen(true)}
-            className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-red-400 transition-all"
-            title="Delete Application"
+            className="p-2 bg-[#08100e] hover:bg-red-500/20 border border-white/10 rounded-xl text-xs text-gray-400 hover:text-red-400 transition-all cursor-pointer"
+            title="Delete Entry"
           >
             <FiTrash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Hero Header Card */}
-      <div className="p-6 md:p-8 rounded-3xl glass-panel border border-slate-800/80 shadow-2xl relative overflow-hidden">
+      {/* Main Header Hero Card */}
+      <div className="p-6 md:p-8 rounded-3xl bg-[#08100e] border border-white/10 shadow-2xl relative overflow-hidden space-y-6">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="flex items-start gap-4">
-            {app.companyLogo ? (
+            <div className="w-16 h-16 rounded-2xl bg-[#040807] border border-white/10 p-2 flex items-center justify-center shrink-0">
               <img
-                src={app.companyLogo}
+                src={getCompanyLogo()}
                 alt={app.company}
-                className="w-16 h-16 rounded-2xl object-contain bg-slate-900 p-2 border border-slate-800 shadow-md"
-                onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.company)}&background=00f5a0&color=000&bold=true`;
+                }}
               />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 font-extrabold text-2xl flex items-center justify-center shadow-md">
-                {app.company ? app.company.charAt(0).toUpperCase() : '?'}
-              </div>
-            )}
+            </div>
 
             <div>
               <div className="flex items-center gap-3 flex-wrap mb-1">
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">{app.title}</h1>
-                <StageBadge stageId={app.stage} className="text-xs" />
+                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{app.title}</h1>
+                <Badge label={stageInfo.label} color={stageInfo.color} />
               </div>
-              <p className="text-lg font-semibold text-indigo-400">{app.company}</p>
+              <p className="text-base font-bold text-[#00f5a0] font-mono">{app.company}</p>
 
-              <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-400">
+              <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-400 font-mono">
                 <span className="flex items-center gap-1">
-                  <FiMapPin className="text-slate-500" /> {app.location || 'Remote'}
+                  <FiMapPin className="text-[#00f5a0]" /> {app.location || 'Remote'}
                 </span>
-                <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-                  <FiDollarSign /> {formatSalary(app.salaryMin, app.salaryMax, app.currency)}
-                </span>
+                {app.salary && (
+                  <span className="flex items-center gap-1 text-white">
+                    <FiDollarSign className="text-cyan-400" /> {app.salary}
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
-                  <FiClock className="text-slate-500" /> Applied: {formatDate(app.appliedDate || app.createdAt)}
+                  <FiClock className="text-gray-500" /> Applied: {formatDate(app.dateApplied || app.createdAt)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Quick Job URL Button */}
+          {/* Quick Apply / Job Link */}
           {app.jobUrl && (
             <a
               href={app.jobUrl}
               target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl transition-all self-start"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#00f5a0] hover:bg-[#00d88d] text-black font-bold text-xs font-mono rounded-xl shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all self-start"
             >
-              <span>View Job Posting</span>
+              <span>Original Job Portal</span>
               <FiExternalLink className="w-4 h-4" />
             </a>
           )}
         </div>
 
-        {/* Stage Change Controls */}
-        <div className="mt-6 pt-6 border-t border-slate-800/80">
-          <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Move Pipeline Stage</p>
+        {/* Stage Advancement Switcher */}
+        <div className="pt-6 border-t border-white/10">
+          <p className="text-xs font-mono text-gray-400 mb-2 uppercase tracking-wider">Fast Advance Pipeline Stage</p>
           <div className="flex flex-wrap gap-2">
-            {STAGES.map(s => (
+            {Object.entries(STAGES).map(([key, info]) => (
               <button
-                key={s.id}
-                onClick={() => handleUpdate({ stage: s.id })}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  app.stage === s.id
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400'
-                    : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                key={key}
+                type="button"
+                onClick={() => handleUpdate({ stage: key })}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                  app.stage === key
+                    ? 'bg-[#00f5a0] text-black font-bold shadow-[0_0_15px_rgba(0,245,160,0.4)]'
+                    : 'bg-[#040807] hover:bg-white/5 text-gray-400 border border-white/5'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                {s.label}
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
+                {info.label}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Left Column Details, Right Column Contacts & Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (Details + Cold Email Generator) */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Cold Email Outreach Status Widget */}
-          <div className="p-5 rounded-2xl glass-panel border border-slate-800/80 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <FiMail className="text-purple-400" /> Cold Email Outreach
-              </h3>
-              <ColdEmailBadge statusId={app.coldEmailStatus} />
-            </div>
+      {/* Main Grid: Exam/Interview Schedule + Skills + Notes */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (Exam Radar & Skills) */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* UPCOMING EXAM & ROUND CARD */}
+          <div className="p-6 rounded-2xl bg-[#08100e] border border-[#00f5a0]/30 space-y-4 shadow-lg">
+            <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <FiCalendar className="w-4 h-4 text-[#00f5a0]" /> Next Round / Exam Radar
+            </h3>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Update Outreach Status</label>
-              <select
-                value={app.coldEmailStatus}
-                onChange={(e) => handleUpdate({ coldEmailStatus: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                {COLD_EMAIL_STATUSES.map(s => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => setShowEmailTemplate(!showEmailTemplate)}
-              className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-indigo-300 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              <FiCopy className="w-3.5 h-3.5" />
-              {showEmailTemplate ? 'Hide Cold Email Template' : 'Generate Cold Email Template'}
-            </button>
-
-            {showEmailTemplate && (
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 space-y-2">
-                <pre className="whitespace-pre-wrap font-sans text-slate-300 leading-relaxed text-[11px]">
-                  {generateColdEmailText()}
-                </pre>
-                <button
-                  onClick={copyEmailTemplate}
-                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-all"
-                >
-                  Copy Template Text
-                </button>
+            {app.nextRoundDate ? (
+              <div className="p-4 rounded-xl bg-[#040807] border border-[#00f5a0]/20 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-gray-400">ROUND TYPE</span>
+                  <span className="text-[#00f5a0] font-bold">
+                    {NEXT_ROUND_LABELS[app.nextRoundType] || app.nextRoundType}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-gray-400">SCHEDULED DATE</span>
+                  <span className="text-white font-bold">{formatDate(app.nextRoundDate)}</span>
+                </div>
+                {app.nextRoundNotes && (
+                  <p className="text-xs text-gray-400 pt-2 border-t border-white/5">
+                    {app.nextRoundNotes}
+                  </p>
+                )}
               </div>
+            ) : (
+              <p className="text-xs text-gray-500 font-mono italic">
+                No upcoming exam or interview round scheduled yet. Click "Edit Details" to set your next interview date.
+              </p>
             )}
           </div>
 
-          {/* Job Details Card */}
-          <div className="p-5 rounded-2xl glass-panel border border-slate-800/80 space-y-3">
-            <h3 className="font-bold text-sm text-white">Application Meta</h3>
+          {/* MISSING & MATCHED SKILLS CARD */}
+          <div className="p-6 rounded-2xl bg-[#08100e] border border-white/10 space-y-4">
+            <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <FiShield className="w-4 h-4 text-[#00f5a0]" /> Skill Relevancy
+            </h3>
 
-            <div className="text-xs space-y-2 text-slate-300">
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-500">Source</span>
-                <span className="font-medium text-slate-200">{app.source || 'Manual Entry'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-500">Job Type</span>
-                <span className="font-medium text-slate-200">{app.jobType || 'Full-time'}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60">
-                <span className="text-slate-500">Last Modified</span>
-                <span className="font-medium text-slate-200">{formatRelativeTime(app.updatedAt)}</span>
-              </div>
-            </div>
-
-            {app.tags && app.tags.length > 0 && (
-              <div className="pt-2">
-                <span className="text-xs font-semibold text-slate-400 block mb-1.5">Tags</span>
+            {app.missingSkills && app.missingSkills.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1">
+                  <FiAlertCircle className="w-3.5 h-3.5" /> Missing Technical Keywords:
+                </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {app.tags.map((tag, i) => (
-                    <span key={i} className="px-2.5 py-1 text-xs bg-slate-900 text-indigo-300 rounded-lg border border-slate-800 font-medium">
-                      {tag}
+                  {app.missingSkills.map((s) => (
+                    <span
+                      key={s}
+                      className="px-2 py-0.5 rounded-md bg-amber-400/15 border border-amber-400/40 text-amber-400 text-xs font-mono"
+                    >
+                      ! {s}
                     </span>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-[#00f5a0]/10 border border-[#00f5a0]/30 text-xs font-mono text-[#00f5a0] flex items-center gap-2">
+                <FiCheckCircle className="w-4 h-4 shrink-0" />
+                <span>All key technical requirements are fulfilled in your profile!</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column (Recruiter Contacts & Notes) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Recruiter Contacts Section */}
-          <div className="p-6 rounded-2xl glass-panel border border-slate-800/80 space-y-4">
+        {/* Right Column (Interview Notes & Contacts) */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Notes Log */}
+          <div className="p-6 rounded-2xl bg-[#08100e] border border-white/10 space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <FiUserPlus className="text-indigo-400" /> Recruiter Contacts ({app.contacts?.length || 0})
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Key recruiters, hiring managers, and interviewers</p>
-              </div>
-
-              <button
-                onClick={() => setIsContactModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-indigo-600/20"
-              >
-                <FiPlus className="w-3.5 h-3.5" />
-                Add Contact
-              </button>
-            </div>
-
-            {app.contacts && app.contacts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {app.contacts.map((contact, i) => (
-                  <div key={i} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-200">{contact.name}</h4>
-                        <span className="text-xs text-indigo-400 font-medium">{contact.role || 'Recruiter'}</span>
-                      </div>
-                      {contact.linkedin && (
-                        <a
-                          href={contact.linkedin}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-slate-500 hover:text-blue-400"
-                        >
-                          <FiLinkedin className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
-
-                    {contact.email && (
-                      <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                        <FiMail className="text-slate-500" />
-                        <a href={`mailto:${contact.email}`} className="hover:underline">{contact.email}</a>
-                      </div>
-                    )}
-
-                    {contact.notes && (
-                      <p className="text-xs text-slate-400 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
-                        {contact.notes}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-6 text-center border border-dashed border-slate-800 rounded-xl text-xs text-slate-500">
-                No recruiter contacts logged yet. Click "Add Contact" to save recruiter details.
-              </div>
-            )}
-          </div>
-
-          {/* Notes & Activity Log Section */}
-          <div className="p-6 rounded-2xl glass-panel border border-slate-800/80 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <FiFileText className="text-purple-400" /> Notes & Application Timeline ({app.notes?.length || 0})
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Interview logs, salary notes, and updates</p>
-              </div>
-
+              <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <FiFileText className="w-4 h-4 text-[#00f5a0]" /> Interview Notes & Logs ({app.notes?.length || 0})
+              </h3>
               <button
                 onClick={() => setIsNoteModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/60 transition-all"
+                className="px-3 py-1.5 rounded-xl bg-[#00f5a0]/20 text-[#00f5a0] border border-[#00f5a0]/30 hover:bg-[#00f5a0]/30 text-xs font-mono flex items-center gap-1 cursor-pointer"
               >
-                <FiPlus className="w-3.5 h-3.5 text-purple-400" />
-                Add Note
+                <FiPlus className="w-3.5 h-3.5" /> Add Note
               </button>
             </div>
 
             {app.notes && app.notes.length > 0 ? (
               <div className="space-y-3">
                 {app.notes.slice().reverse().map((note, i) => (
-                  <div key={i} className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                      <span className="font-semibold text-slate-400">Note Entry</span>
+                  <div key={i} className="p-4 rounded-xl bg-[#040807] border border-white/10 space-y-1">
+                    <div className="flex items-center justify-between text-xs text-gray-500 font-mono">
+                      <span>Log #{app.notes.length - i}</span>
                       <span>{formatDate(note.createdAt, true)}</span>
                     </div>
-                    <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {note.content}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-6 text-center border border-dashed border-slate-800 rounded-xl text-xs text-slate-500">
-                No notes added yet. Keep track of interview feedback and thoughts here.
+              <div className="p-6 text-center border border-dashed border-white/10 rounded-xl text-xs text-gray-500 font-mono">
+                No notes logged yet. Keep track of recruiter feedback, salary negotiations, and interview questions here.
+              </div>
+            )}
+          </div>
+
+          {/* Recruiter Contacts */}
+          <div className="p-6 rounded-2xl bg-[#08100e] border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <FiUserPlus className="w-4 h-4 text-cyan-400" /> Recruiter & Panel Contacts ({app.contacts?.length || 0})
+              </h3>
+              <button
+                onClick={() => setIsContactModalOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-cyan-400/20 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/30 text-xs font-mono flex items-center gap-1 cursor-pointer"
+              >
+                <FiPlus className="w-3.5 h-3.5" /> Add Contact
+              </button>
+            </div>
+
+            {app.contacts && app.contacts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {app.contacts.map((contact, i) => (
+                  <div key={i} className="p-3.5 rounded-xl bg-[#040807] border border-white/10 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-bold text-sm text-white">{contact.name}</h4>
+                        <span className="text-xs text-[#00f5a0] font-mono">{contact.role || 'Recruiter'}</span>
+                      </div>
+                      {contact.linkedin && (
+                        <a href={contact.linkedin} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-[#00f5a0]">
+                          <FiLinkedin className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                    {contact.email && (
+                      <div className="text-xs text-gray-400 font-mono flex items-center gap-1">
+                        <FiMail className="w-3 h-3 text-gray-500" />
+                        <a href={`mailto:${contact.email}`} className="hover:underline">{contact.email}</a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center border border-dashed border-white/10 rounded-xl text-xs text-gray-500 font-mono">
+                No recruiter or interviewer contacts added.
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Edit Modal */}
       <ApplicationFormModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        onSubmit={handleUpdate}
         initialData={app}
-        isLoading={updateMutation.isPending}
       />
 
-      <ContactFormModal
-        isOpen={isContactModalOpen}
-        onClose={() => setIsContactModalOpen(false)}
-        onSubmit={handleAddContact}
-        isLoading={addContactMutation.isPending}
-      />
+      {/* Add Note Modal */}
+      <Modal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} title="Add Application Note">
+        <form onSubmit={handleAddNote} className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-gray-300 mb-1.5">Note Details</label>
+            <textarea
+              rows={4}
+              required
+              value={noteContent}
+              onChange={(e) => setNoteContent(e.target.value)}
+              placeholder="e.g. Completed round 2 live coding. Recruiter mentioned offer decision by next Friday..."
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0]"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setIsNoteModalOpen(false)} className="px-4 py-2 bg-white/5 text-xs font-mono text-gray-300 rounded-xl">Cancel</button>
+            <button type="submit" className="px-5 py-2 bg-[#00f5a0] text-black font-bold text-xs font-mono rounded-xl">Save Note</button>
+          </div>
+        </form>
+      </Modal>
 
-      <NoteFormModal
-        isOpen={isNoteModalOpen}
-        onClose={() => setIsNoteModalOpen(false)}
-        onSubmit={handleAddNote}
-        isLoading={addNoteMutation.isPending}
-      />
+      {/* Add Contact Modal */}
+      <Modal isOpen={isContactModalOpen} onClose={() => setIsContactModalOpen(false)} title="Add Recruiter Contact">
+        <form onSubmit={handleAddContact} className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-gray-300 mb-1.5">Contact Name *</label>
+            <input
+              type="text"
+              required
+              value={contactData.name}
+              onChange={(e) => setContactData({ ...contactData, name: e.target.value })}
+              placeholder="e.g. Sarah Jenkins"
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-mono text-gray-300 mb-1.5">Role / Title</label>
+            <input
+              type="text"
+              value={contactData.role}
+              onChange={(e) => setContactData({ ...contactData, role: e.target.value })}
+              placeholder="e.g. Senior Tech Recruiter"
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-mono text-gray-300 mb-1.5">Email</label>
+            <input
+              type="email"
+              value={contactData.email}
+              onChange={(e) => setContactData({ ...contactData, email: e.target.value })}
+              placeholder="sarah@company.com"
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-mono text-gray-300 mb-1.5">LinkedIn Profile URL</label>
+            <input
+              type="url"
+              value={contactData.linkedin}
+              onChange={(e) => setContactData({ ...contactData, linkedin: e.target.value })}
+              placeholder="https://linkedin.com/in/..."
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0]"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setIsContactModalOpen(false)} className="px-4 py-2 bg-white/5 text-xs font-mono text-gray-300 rounded-xl">Cancel</button>
+            <button type="submit" className="px-5 py-2 bg-[#00f5a0] text-black font-bold text-xs font-mono rounded-xl">Save Contact</button>
+          </div>
+        </form>
+      </Modal>
 
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
-        title="Delete Application Entry"
-        message="Are you sure you want to delete this job application? This action cannot be undone."
-        confirmText="Permanently Delete"
-        isLoading={deleteMutation.isPending}
+        title="Delete Tracked Application"
+        message="Are you sure you want to delete this tracked application? All logs and upcoming interview events will be deleted."
       />
     </div>
   );
-};
+}

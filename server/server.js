@@ -39,20 +39,20 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/applications', require('./routes/applications'));
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/sync', require('./routes/sync'));
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve frontend static assets
+// Serve frontend static assets in production
 const distPath = path.join(__dirname, '../client/dist');
 app.use(express.static(distPath));
 
-// Catch-all route for SPA client-side routing in Express 5
+// Catch-all route for SPA client-side routing
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {
     return res.sendFile(path.join(distPath, 'index.html'));
@@ -67,6 +67,6 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  // Auto-seed database if empty on first startup
+  // Auto-seed job database if empty on startup
   await seedIfEmpty();
 });

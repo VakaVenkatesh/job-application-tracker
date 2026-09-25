@@ -1,45 +1,36 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { Sidebar } from './components/common/Sidebar';
-import { Header } from './components/common/Header';
+import Sidebar from './components/common/Sidebar';
+import Header from './components/common/Header';
 import { Dashboard } from './pages/Dashboard';
 import { PipelineBoard } from './pages/PipelineBoard';
-import { ApplicationsList } from './pages/ApplicationsList';
-import { ApplicationDetail } from './pages/ApplicationDetail';
-import { JobDiscovery } from './pages/JobDiscovery';
-import { LandingPage } from './pages/LandingPage';
-import { ApplicationFormModal } from './components/forms/ApplicationFormModal';
+import ApplicationsList from './pages/ApplicationsList';
+import ApplicationDetail from './pages/ApplicationDetail';
+import JobDiscovery from './pages/JobDiscovery';
+import LandingPage from './pages/LandingPage';
+import Profile from './pages/Profile';
+import ApplicationFormModal from './components/forms/ApplicationFormModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { useCreateApplication } from './hooks/useApplications';
 import { useAuth } from './context/AuthContext';
 
 export function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [selectedAppId, setSelectedAppId] = useState(null);
 
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const createApplicationMutation = useCreateApplication();
   const navigate = useNavigate();
 
   const handleSelectApplication = (app) => {
-    setSelectedAppId(app._id);
     navigate(`/applications/${app._id}`);
-  };
-
-  const handleCreateSubmit = (appData) => {
-    createApplicationMutation.mutate(appData, {
-      onSuccess: () => setIsCreateModalOpen(false)
-    });
   };
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+      <div className="min-h-screen bg-[#040908] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-slate-400 font-medium">Loading workspace...</p>
+          <div className="w-10 h-10 border-2 border-[#00f5a0] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-gray-400 font-mono">Initializing Aspirant Portal...</p>
         </div>
       </div>
     );
@@ -48,40 +39,60 @@ export function App() {
   // Public View for Guests (Unauthenticated Users)
   if (!isAuthenticated) {
     return (
-      <>
-        <LandingPage onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+      <div className="min-h-screen bg-[#040908] text-gray-100 antialiased selection:bg-[#00f5a0] selection:text-black">
+        {/* Top Public Header */}
+        <header className="sticky top-0 z-40 h-16 bg-[#040908]/90 backdrop-blur-md border-b border-[#00f5a0]/15 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#00f5a0] text-black font-black flex items-center justify-center text-lg shadow-[0_0_15px_rgba(0,245,160,0.4)]">
+              ⚡
+            </div>
+            <span className="font-black text-base text-white tracking-tight">
+              JOBTRACK<span className="text-[#00f5a0]">.PRO</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-5 py-2 rounded-xl bg-[#00f5a0] hover:bg-[#00d88d] text-black font-bold text-xs font-mono shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all cursor-pointer"
+            >
+              Sign In / Get Started
+            </button>
+          </div>
+        </header>
+
+        <main>
+          <Routes>
+            <Route path="/" element={<LandingPage onOpenAuth={() => setIsAuthModalOpen(true)} />} />
+            <Route path="/jobs" element={<div className="p-6 max-w-7xl mx-auto"><JobDiscovery /></div>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-      </>
+      </div>
     );
   }
 
-  // Private Workspace View for Logged-In Users
+  // Authenticated Workspace for Job Aspirants
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-[#040908] text-gray-100 antialiased selection:bg-[#00f5a0] selection:text-black font-sans">
+      {/* Sidebar Navigation */}
       <Sidebar />
 
-      {/* Main Content Area */}
+      {/* Main Command Center Container */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
         <Header
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
         />
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <Routes>
-            <Route
-              path="/"
-              element={
-                <Dashboard
-                  onOpenCreateModal={() => setIsCreateModalOpen(true)}
-                  onNavigate={(path) => navigate(path)}
-                />
-              }
-            />
+            <Route path="/" element={<Navigate to="/jobs" replace />} />
+            <Route path="/jobs" element={<JobDiscovery />} />
+            <Route path="/dashboard" element={<Dashboard onOpenCreateModal={() => setIsCreateModalOpen(true)} />} />
             <Route
               path="/board"
               element={
@@ -92,35 +103,10 @@ export function App() {
                 />
               }
             />
-            <Route
-              path="/applications"
-              element={
-                <ApplicationsList
-                  onOpenCreateModal={() => setIsCreateModalOpen(true)}
-                  onSelectApplication={handleSelectApplication}
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                />
-              }
-            />
-            <Route
-              path="/applications/:id"
-              element={
-                <ApplicationDetailRoute
-                  selectedAppId={selectedAppId}
-                  onBack={() => navigate('/board')}
-                />
-              }
-            />
-            <Route
-              path="/discover"
-              element={
-                <JobDiscovery
-                  onSelectApplication={handleSelectApplication}
-                />
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/applications" element={<ApplicationsList />} />
+            <Route path="/applications/:id" element={<ApplicationDetail />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<Navigate to="/jobs" replace />} />
           </Routes>
         </main>
       </div>
@@ -129,19 +115,9 @@ export function App() {
       <ApplicationFormModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateSubmit}
-        isLoading={createApplicationMutation.isPending}
       />
     </div>
   );
-}
-
-// Wrapper to extract route param for application detail page
-import { useParams } from 'react-router-dom';
-function ApplicationDetailRoute({ selectedAppId, onBack }) {
-  const params = useParams();
-  const id = params.id || selectedAppId;
-  return <ApplicationDetail applicationId={id} onBack={onBack} />;
 }
 
 export default App;

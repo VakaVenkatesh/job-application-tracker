@@ -1,12 +1,27 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { FiMapPin, FiDollarSign, FiClock, FiMail, FiExternalLink, FiMoreHorizontal } from 'react-icons/fi';
-import { ColdEmailBadge } from '../common/Badge';
-import { formatSalary, formatRelativeTime } from '../../utils/formatters';
+import { FiMapPin, FiDollarSign, FiClock, FiCalendar, FiAlertCircle, FiCheckCircle, FiExternalLink } from 'react-icons/fi';
+import { formatDate } from '../../utils/formatters';
+
+const NEXT_ROUND_SHORT = {
+  online_assessment: 'OA / Exam',
+  technical_interview: 'Tech Round',
+  system_design: 'Sys Design',
+  hr_screening: 'HR Screen',
+  managerial: 'Managerial',
+  final_round: 'Final Call',
+  assignment: 'Assignment',
+  offer_discussion: 'Offer Call'
+};
 
 export const KanbanCard = ({ app, index, onClick }) => {
-  const salaryText = formatSalary(app.salaryMin, app.salaryMax, app.currency);
-  const updatedAgo = formatRelativeTime(app.updatedAt);
+  const getCompanyLogo = () => {
+    if (app.companyLogo) return app.companyLogo;
+    const clean = (app.company || 'tech').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `https://logo.clearbit.com/${clean}.com`;
+  };
+
+  const hasNextRound = app.nextRoundDate && new Date(app.nextRoundDate) > new Date();
 
   return (
     <Draggable draggableId={app._id} index={index}>
@@ -16,32 +31,31 @@ export const KanbanCard = ({ app, index, onClick }) => {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClick(app)}
-          className={`p-4 rounded-xl mb-3 glass-panel cursor-pointer transition-all duration-200 select-none group border ${
+          className={`p-4 rounded-2xl mb-3 bg-[#08100e] cursor-pointer transition-all duration-200 select-none group border ${
             snapshot.isDragging
-              ? 'bg-slate-800/90 border-indigo-500/80 shadow-2xl scale-[1.02] rotate-1 z-50'
-              : 'border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/90 hover:shadow-lg'
+              ? 'bg-[#0c1c18] border-[#00f5a0] shadow-[0_0_25px_rgba(0,245,160,0.3)] scale-[1.02] rotate-1 z-50'
+              : 'border-white/10 hover:border-[#00f5a0]/40 hover:bg-[#0c1815] shadow-md'
           }`}
         >
           {/* Card Header: Company Logo/Name + External Link */}
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="flex items-center gap-2.5">
-              {app.companyLogo ? (
+              <div className="w-8 h-8 rounded-lg bg-[#040807] border border-white/10 p-1 flex items-center justify-center shrink-0">
                 <img
-                  src={app.companyLogo}
+                  src={getCompanyLogo()}
                   alt={app.company}
-                  className="w-8 h-8 rounded-lg object-contain bg-slate-800 p-1 border border-slate-700/50"
-                  onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.company)}&background=00f5a0&color=000&bold=true`;
+                  }}
                 />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 font-bold text-sm flex items-center justify-center">
-                  {app.company ? app.company.charAt(0).toUpperCase() : '?'}
-                </div>
-              )}
-              <div>
-                <h4 className="font-semibold text-xs text-slate-400 group-hover:text-slate-200 transition-colors">
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-mono text-[11px] text-gray-400 group-hover:text-gray-200 transition-colors truncate">
                   {app.company}
                 </h4>
-                <h3 className="font-bold text-sm text-slate-100 line-clamp-1 leading-snug">
+                <h3 className="font-bold text-xs text-white line-clamp-1 leading-snug">
                   {app.title}
                 </h3>
               </div>
@@ -51,9 +65,9 @@ export const KanbanCard = ({ app, index, onClick }) => {
               <a
                 href={app.jobUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-slate-500 hover:text-indigo-400 p-1 rounded-md hover:bg-slate-800 transition-colors"
+                className="text-gray-500 hover:text-[#00f5a0] p-1 rounded-md transition-colors"
                 title="View original job posting"
               >
                 <FiExternalLink className="w-3.5 h-3.5" />
@@ -61,46 +75,59 @@ export const KanbanCard = ({ app, index, onClick }) => {
             )}
           </div>
 
-          {/* Location & Salary Info */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 my-2.5 text-xs text-slate-400">
+          {/* Location & Compensation */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 my-2 text-[11px] font-mono text-gray-400">
             {app.location && (
               <span className="flex items-center gap-1">
-                <FiMapPin className="w-3 h-3 text-slate-500" />
-                <span className="truncate max-w-[120px]">{app.location}</span>
+                <FiMapPin className="w-3 h-3 text-[#00f5a0]" />
+                <span className="truncate max-w-[100px]">{app.location}</span>
               </span>
             )}
-            {salaryText !== 'Not specified' && (
-              <span className="flex items-center gap-1 text-emerald-400/90 font-medium">
-                <FiDollarSign className="w-3 h-3" />
-                <span>{salaryText}</span>
+            {app.salary && (
+              <span className="flex items-center gap-0.5 text-white">
+                <FiDollarSign className="w-3 h-3 text-cyan-400" />
+                <span>{app.salary}</span>
               </span>
             )}
           </div>
 
-          {/* Tags */}
-          {app.tags && app.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {app.tags.slice(0, 3).map((tag, i) => (
-                <span key={i} className="px-2 py-0.5 text-[10px] font-medium bg-slate-800/80 text-slate-400 rounded-md border border-slate-700/40">
-                  {tag}
-                </span>
-              ))}
-              {app.tags.length > 3 && (
-                <span className="text-[10px] text-slate-500 font-medium self-center">+ {app.tags.length - 3}</span>
-              )}
+          {/* Next Round Radar (if scheduled) */}
+          {app.nextRoundDate && (
+            <div className={`p-2 rounded-xl mb-2 flex items-center justify-between text-[10px] font-mono border ${
+              hasNextRound
+                ? 'bg-[#00f5a0]/10 border-[#00f5a0]/30 text-[#00f5a0]'
+                : 'bg-white/5 border-white/5 text-gray-400'
+            }`}>
+              <span className="flex items-center gap-1 font-bold">
+                <FiCalendar className="w-3 h-3" />
+                {NEXT_ROUND_SHORT[app.nextRoundType] || 'Next Round'}
+              </span>
+              <span>{formatDate(app.nextRoundDate)}</span>
             </div>
           )}
 
-          {/* Card Footer: Cold Email Badge & Updated Time */}
-          <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/60 text-[11px] text-slate-500">
-            <ColdEmailBadge statusId={app.coldEmailStatus} />
+          {/* Footer: Date Applied & Skills Summary */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono text-gray-500">
             <span className="flex items-center gap-1">
               <FiClock className="w-3 h-3" />
-              {updatedAgo}
+              {formatDate(app.dateApplied || app.createdAt)}
             </span>
+
+            {app.missingSkills && app.missingSkills.length > 0 ? (
+              <span className="text-amber-400 font-bold flex items-center gap-1">
+                <FiAlertCircle className="w-3 h-3" />
+                {app.missingSkills.length} Missing
+              </span>
+            ) : (
+              <span className="text-[#00f5a0] flex items-center gap-1">
+                <FiCheckCircle className="w-3 h-3" /> Ready
+              </span>
+            )}
           </div>
         </div>
       )}
     </Draggable>
   );
 };
+
+export default KanbanCard;

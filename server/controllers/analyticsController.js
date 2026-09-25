@@ -1,11 +1,14 @@
 const Application = require('../models/Application');
+const JobPosting = require('../models/JobPosting');
 const asyncHandler = require('../middleware/asyncHandler');
 const mongoose = require('mongoose');
 
 // @desc    Get live dashboard metrics via aggregation pipeline
 // @route   GET /api/analytics/dashboard
 const getDashboard = asyncHandler(async (req, res) => {
-  // If user is not logged in, return empty metrics
+  // If user is not logged in, return base public metrics
+  const totalOpenJobs = await JobPosting.countDocuments({ isActive: true });
+
   if (!req.user) {
     return res.json({
       success: true,
@@ -15,10 +18,11 @@ const getDashboard = asyncHandler(async (req, res) => {
         responseRate: 0,
         avgDaysToReply: 0,
         weeklyApplied: 0,
-        coldEmailsSent: 0,
+        upcomingRoundsCount: 0,
+        upcomingRounds: [],
         stageDistribution: [],
         topCompanies: [],
-        sourceBreakdown: []
+        totalOpenJobs
       }
     });
   }
@@ -79,26 +83,29 @@ const getDashboard = asyncHandler(async (req, res) => {
     dateApplied: { $gte: startOfWeek }
   });
 
-  // Top companies
+  // Upcoming exams, interviews & rounds
+  const upcomingRounds = await Application.find({
+    user: userId,
+    isArchived: false,
+    nextRoundDate: { $gte: now }
+  })
+  .sort({ nextRoundDate: 1 })
+  .limit(5)
+  .select('title company companyLogo nextRoundDate nextRoundType nextRoundNotes stage');
+
+  const upcomingRoundsCount = await Application.countDocuments({
+    user: userId,
+    isArchived: false,
+    nextRoundDate: { $gte: now }
+  });
+
+  // Top applied companies
   const topCompanies = await Application.aggregate([
     { $match: baseMatch },
     { $group: { _id: '$company', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 5 },
     { $project: { company: '$_id', count: 1, _id: 0 } }
-  ]);
-
-  // Cold email stats
-  const coldEmailsSent = await Application.countDocuments({
-    user: userId,
-    'coldEmail.sent': true
-  });
-
-  // Source breakdown
-  const sourceBreakdown = await Application.aggregate([
-    { $match: baseMatch },
-    { $group: { _id: '$source', count: { $sum: 1 } } },
-    { $sort: { count: -1 } }
   ]);
 
   res.json({
@@ -109,10 +116,11 @@ const getDashboard = asyncHandler(async (req, res) => {
       responseRate,
       avgDaysToReply,
       weeklyApplied,
-      coldEmailsSent,
+      upcomingRoundsCount,
+      upcomingRounds,
       stageDistribution,
       topCompanies,
-      sourceBreakdown
+      totalOpenJobs
     }
   });
 });
@@ -126,17 +134,14 @@ const getTimeline = asyncHandler(async (req, res) => {
 
   const userId = new mongoose.Types.ObjectId(req.user._id);
   const timeline = await Application.aggregate([
-    { $match: { user: userId, isArchived: false, dateDiscovered: { $ne: null } } },
+    { $match: { user: userId, isArchived: false, dateApplied: { $ne: null } } },
     {
       $group: {
         _id: {
-          year: { $year: '$dateDiscovered' },
-          week: { $week: '$dateDiscovered' }
+          year: { $year: '$dateApplied' },
+          week: { $week: '$dateApplied' }
         },
-        count: { $sum: 1 },
-        applied: {
-          $sum: { $cond: [{ $ne: ['$dateApplied', null] }, 1, 0] }
-        }
+        count: { $sum: 1 }
       }
     },
     { $sort: { '_id.year': 1, '_id.week': 1 } },

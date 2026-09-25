@@ -1,10 +1,10 @@
 const Application = require('../models/Application');
 const asyncHandler = require('../middleware/asyncHandler');
 
-// @desc    Get all applications (with filters, search, sorting, pagination)
+// @desc    Get all applications for current user (with filters, search, sorting, pagination)
 // @route   GET /api/applications
+// @access  Private (Empty array if unauthenticated)
 const getApplications = asyncHandler(async (req, res) => {
-  // Unauthenticated users get an empty list
   if (!req.user) {
     return res.json({
       success: true,
@@ -16,11 +16,10 @@ const getApplications = asyncHandler(async (req, res) => {
     });
   }
 
-  const { stage, source, search, sort, page = 1, limit = 50, archived } = req.query;
+  const { stage, search, sort, page = 1, limit = 50, archived } = req.query;
   const query = { user: req.user._id };
 
-  if (stage) query.stage = stage;
-  if (source) query.source = source;
+  if (stage && stage !== 'all') query.stage = stage;
   if (archived === 'true') query.isArchived = true;
   else query.isArchived = false;
 
@@ -28,14 +27,16 @@ const getApplications = asyncHandler(async (req, res) => {
     query.$or = [
       { title: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
-      { tags: { $regex: search, $options: 'i' } }
+      { tags: { $regex: search, $options: 'i' } },
+      { requiredSkills: { $regex: search, $options: 'i' } }
     ];
   }
 
   const sortOptions = {};
-  if (sort === 'newest') sortOptions.createdAt = -1;
-  else if (sort === 'oldest') sortOptions.createdAt = 1;
+  if (sort === 'newest') sortOptions.dateApplied = -1;
+  else if (sort === 'oldest') sortOptions.dateApplied = 1;
   else if (sort === 'company') sortOptions.company = 1;
+  else if (sort === 'next_round') sortOptions.nextRoundDate = 1;
   else if (sort === 'priority') sortOptions.priority = -1;
   else sortOptions.updatedAt = -1;
 
@@ -43,7 +44,8 @@ const getApplications = asyncHandler(async (req, res) => {
   const applications = await Application.find(query)
     .sort(sortOptions)
     .skip((page - 1) * limit)
-    .limit(Number(limit));
+    .limit(Number(limit))
+    .populate('jobPosting', 'applicantCount salary location jobUrl');
 
   res.json({
     success: true,
@@ -57,8 +59,9 @@ const getApplications = asyncHandler(async (req, res) => {
 
 // @desc    Get single application
 // @route   GET /api/applications/:id
+// @access  Private
 const getApplication = asyncHandler(async (req, res) => {
-  const application = await Application.findById(req.params.id);
+  const application = await Application.findById(req.params.id).populate('jobPosting');
   if (!application) {
     res.status(404);
     throw new Error('Application not found');
@@ -68,16 +71,22 @@ const getApplication = asyncHandler(async (req, res) => {
 
 // @desc    Create new application
 // @route   POST /api/applications
+// @access  Private
 const createApplication = asyncHandler(async (req, res) => {
   if (req.user) {
     req.body.user = req.user._id;
   }
+  if (!req.body.dateApplied) {
+    req.body.dateApplied = new Date();
+  }
+
   const application = await Application.create(req.body);
   res.status(201).json({ success: true, data: application });
 });
 
 // @desc    Update application
 // @route   PUT /api/applications/:id
+// @access  Private
 const updateApplication = asyncHandler(async (req, res) => {
   const application = await Application.findByIdAndUpdate(
     req.params.id,
@@ -91,8 +100,9 @@ const updateApplication = asyncHandler(async (req, res) => {
   res.json({ success: true, data: application });
 });
 
-// @desc    Update application stage (for drag-and-drop)
+// @desc    Update application stage (for drag-and-drop pipeline)
 // @route   PATCH /api/applications/:id/stage
+// @access  Private
 const updateStage = asyncHandler(async (req, res) => {
   const { stage } = req.body;
   const validStages = ['wishlist', 'applied', 'screening', 'interviewing', 'offer', 'accepted', 'rejected', 'ghosted'];
@@ -104,11 +114,11 @@ const updateStage = asyncHandler(async (req, res) => {
 
   const updateData = { stage };
 
-  // Auto-set dateApplied when moving to 'applied' stage
+  // Auto-set dateApplied when moving to 'applied' stage if not set
   if (stage === 'applied') {
     updateData.dateApplied = new Date();
   }
-  // Auto-set dateResponse when moving to stages after screening
+  // Auto-set dateResponse when moving to screening or later
   if (['screening', 'interviewing', 'offer', 'accepted', 'rejected'].includes(stage)) {
     const app = await Application.findById(req.params.id);
     if (app && !app.dateResponse) {
@@ -132,6 +142,7 @@ const updateStage = asyncHandler(async (req, res) => {
 
 // @desc    Delete application
 // @route   DELETE /api/applications/:id
+// @access  Private
 const deleteApplication = asyncHandler(async (req, res) => {
   const application = await Application.findByIdAndDelete(req.params.id);
   if (!application) {
@@ -143,6 +154,7 @@ const deleteApplication = asyncHandler(async (req, res) => {
 
 // @desc    Add note to application
 // @route   POST /api/applications/:id/notes
+// @access  Private
 const addNote = asyncHandler(async (req, res) => {
   const application = await Application.findById(req.params.id);
   if (!application) {
@@ -156,6 +168,7 @@ const addNote = asyncHandler(async (req, res) => {
 
 // @desc    Delete note from application
 // @route   DELETE /api/applications/:id/notes/:noteId
+// @access  Private
 const deleteNote = asyncHandler(async (req, res) => {
   const application = await Application.findById(req.params.id);
   if (!application) {
@@ -171,6 +184,7 @@ const deleteNote = asyncHandler(async (req, res) => {
 
 // @desc    Add contact to application
 // @route   POST /api/applications/:id/contacts
+// @access  Private
 const addContact = asyncHandler(async (req, res) => {
   const application = await Application.findById(req.params.id);
   if (!application) {
@@ -184,6 +198,7 @@ const addContact = asyncHandler(async (req, res) => {
 
 // @desc    Update contact
 // @route   PUT /api/applications/:id/contacts/:contactId
+// @access  Private
 const updateContact = asyncHandler(async (req, res) => {
   const application = await Application.findById(req.params.id);
   if (!application) {
@@ -202,6 +217,7 @@ const updateContact = asyncHandler(async (req, res) => {
 
 // @desc    Delete contact
 // @route   DELETE /api/applications/:id/contacts/:contactId
+// @access  Private
 const deleteContact = asyncHandler(async (req, res) => {
   const application = await Application.findById(req.params.id);
   if (!application) {
