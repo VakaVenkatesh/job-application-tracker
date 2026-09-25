@@ -1,23 +1,45 @@
 const Application = require('../models/Application');
 const asyncHandler = require('../middleware/asyncHandler');
+const mongoose = require('mongoose');
 
 // @desc    Get live dashboard metrics via aggregation pipeline
 // @route   GET /api/analytics/dashboard
 const getDashboard = asyncHandler(async (req, res) => {
+  // If user is not logged in, return empty metrics
+  if (!req.user) {
+    return res.json({
+      success: true,
+      data: {
+        totalApps: 0,
+        totalApplied: 0,
+        responseRate: 0,
+        avgDaysToReply: 0,
+        weeklyApplied: 0,
+        coldEmailsSent: 0,
+        stageDistribution: [],
+        topCompanies: [],
+        sourceBreakdown: []
+      }
+    });
+  }
+
+  const userId = new mongoose.Types.ObjectId(req.user._id);
+  const baseMatch = { user: userId, isArchived: false };
+
   // Stage distribution
   const stageDistribution = await Application.aggregate([
-    { $match: { isArchived: false } },
+    { $match: baseMatch },
     { $group: { _id: '$stage', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);
 
   // Total counts
-  const totalApps = await Application.countDocuments({ isArchived: false });
-  const totalApplied = await Application.countDocuments({ isArchived: false, stage: { $ne: 'wishlist' } });
+  const totalApps = await Application.countDocuments(baseMatch);
+  const totalApplied = await Application.countDocuments({ ...baseMatch, stage: { $ne: 'wishlist' } });
 
-  // Response rate (apps that got a dateResponse vs total applied)
+  // Response rate
   const withResponse = await Application.countDocuments({
-    isArchived: false,
+    ...baseMatch,
     stage: { $ne: 'wishlist' },
     dateResponse: { $ne: null }
   });
@@ -27,6 +49,7 @@ const getDashboard = asyncHandler(async (req, res) => {
   const avgDaysResult = await Application.aggregate([
     {
       $match: {
+        user: userId,
         isArchived: false,
         dateApplied: { $ne: null },
         dateResponse: { $ne: null }
@@ -45,19 +68,20 @@ const getDashboard = asyncHandler(async (req, res) => {
   ]);
   const avgDaysToReply = avgDaysResult.length > 0 ? Math.round(avgDaysResult[0].avgDays) : 0;
 
-  // This week applications count
+  // Weekly applied count
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
 
   const weeklyApplied = await Application.countDocuments({
+    user: userId,
     dateApplied: { $gte: startOfWeek }
   });
 
   // Top companies
   const topCompanies = await Application.aggregate([
-    { $match: { isArchived: false } },
+    { $match: baseMatch },
     { $group: { _id: '$company', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 5 },
@@ -66,12 +90,13 @@ const getDashboard = asyncHandler(async (req, res) => {
 
   // Cold email stats
   const coldEmailsSent = await Application.countDocuments({
+    user: userId,
     'coldEmail.sent': true
   });
 
   // Source breakdown
   const sourceBreakdown = await Application.aggregate([
-    { $match: { isArchived: false } },
+    { $match: baseMatch },
     { $group: { _id: '$source', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);
@@ -92,11 +117,16 @@ const getDashboard = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get applications timeline (grouped by week)
+// @desc    Get applications timeline
 // @route   GET /api/analytics/timeline
 const getTimeline = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return res.json({ success: true, data: [] });
+  }
+
+  const userId = new mongoose.Types.ObjectId(req.user._id);
   const timeline = await Application.aggregate([
-    { $match: { isArchived: false, dateDiscovered: { $ne: null } } },
+    { $match: { user: userId, isArchived: false, dateDiscovered: { $ne: null } } },
     {
       $group: {
         _id: {
@@ -119,8 +149,13 @@ const getTimeline = asyncHandler(async (req, res) => {
 // @desc    Get stage distribution
 // @route   GET /api/analytics/stages
 const getStageDistribution = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return res.json({ success: true, data: [] });
+  }
+
+  const userId = new mongoose.Types.ObjectId(req.user._id);
   const stages = await Application.aggregate([
-    { $match: { isArchived: false } },
+    { $match: { user: userId, isArchived: false } },
     { $group: { _id: '$stage', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);

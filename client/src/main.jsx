@@ -10,9 +10,10 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: 10000, // 10-second auto-sync for real-time updates
       retry: 1,
-      staleTime: 1000 * 60 * 2 // 2 minutes
+      staleTime: 1000 * 5 // 5 seconds
     }
   }
 });

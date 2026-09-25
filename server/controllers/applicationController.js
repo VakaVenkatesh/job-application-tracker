@@ -4,12 +4,20 @@ const asyncHandler = require('../middleware/asyncHandler');
 // @desc    Get all applications (with filters, search, sorting, pagination)
 // @route   GET /api/applications
 const getApplications = asyncHandler(async (req, res) => {
-  const { stage, source, search, sort, page = 1, limit = 50, archived } = req.query;
-  const query = {};
-
-  if (req.user) {
-    query.$or = [{ user: req.user._id }, { user: { $exists: false } }];
+  // Unauthenticated users get an empty list
+  if (!req.user) {
+    return res.json({
+      success: true,
+      count: 0,
+      total: 0,
+      page: 1,
+      pages: 0,
+      data: []
+    });
   }
+
+  const { stage, source, search, sort, page = 1, limit = 50, archived } = req.query;
+  const query = { user: req.user._id };
 
   if (stage) query.stage = stage;
   if (source) query.source = source;
@@ -17,17 +25,11 @@ const getApplications = asyncHandler(async (req, res) => {
   else query.isArchived = false;
 
   if (search) {
-    const searchConditions = [
+    query.$or = [
       { title: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
       { tags: { $regex: search, $options: 'i' } }
     ];
-    if (query.$or) {
-      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
-      delete query.$or;
-    } else {
-      query.$or = searchConditions;
-    }
   }
 
   const sortOptions = {};
