@@ -166,6 +166,34 @@ This repository is optimized for one-click deployment on **Vercel** with automat
 
 ---
 
+## 🚀 Deploying on Render
+
+This project includes a [`render.yaml`](file:///e:/Job%20Application%20Tracker/render.yaml) blueprint file for easy deployment as a full-stack **Web Service** on [Render.com](https://render.com/).
+
+### Option A: Via Render Blueprints (Automatic)
+1. Go to [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Blueprint**.
+2. Connect your **`job-application-tracker`** GitHub repository.
+3. Render will auto-detect `render.yaml` and configure the Web Service automatically:
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+4. Enter your **`MONGODB_URI`** connection string when prompted.
+5. Click **Apply**.
+
+### Option B: Via Render Web Service (Manual)
+1. Go to [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the following settings:
+   - **Name**: `job-application-tracker`
+   - **Environment**: `Node`
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+4. Add Environment Variables under **Environment Variables**:
+   - `MONGODB_URI`: *Your MongoDB Atlas connection string*
+   - `NODE_ENV`: `production`
+5. Click **Create Web Service**.
+
+---
+
 ## 📡 API Endpoints
 
 | Method | Endpoint | Description |
