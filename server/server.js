@@ -1,0 +1,52 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const path = require('path');
+const connectDB = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
+const { seedIfEmpty } = require('./services/seedService');
+
+// Load env vars
+dotenv.config();
+
+// Connect to database
+connectDB();
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.use('/api/applications', require('./routes/applications'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/sync', require('./routes/sync'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve frontend static assets
+const distPath = path.join(__dirname, '../client/dist');
+app.use(express.static(distPath));
+
+// Catch-all route for SPA client-side routing in Express 5
+app.use((req, res, next) => {
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
+  next();
+});
+
+// Error handler (must be last middleware)
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  // Auto-seed database if empty on first startup
+  await seedIfEmpty();
+});

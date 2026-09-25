@@ -1,0 +1,10 @@
+{
+  "name": "job-application-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --prefix client && npm install --prefix server",
+    "start": "node server/server.js",
+    "dev": "npm run dev --prefix server"
+  }
+}
