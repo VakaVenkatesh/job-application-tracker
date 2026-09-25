@@ -35,33 +35,39 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-[#081210]/90 border border-[#00f5a0]/20 shadow-xl backdrop-blur-md">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00f5a0] animate-ping" />
+            <span className="text-[10px] font-extrabold text-[#00f5a0] uppercase tracking-wider">
+              DATABASE RECORDS
+            </span>
+          </div>
           <h1 className="text-2xl font-extrabold text-white">All Applications</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Filter, search, and manage all your job application entries
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Filter, search, and manage all your job application entries stored in MongoDB
           </p>
         </div>
 
         <button
           onClick={onOpenCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-600/25 transition-all hover:scale-[1.02] self-start md:self-auto"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#00f5a0] hover:bg-[#00d294] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-[0_0_20px_rgba(0,245,160,0.35)] transition-all hover:scale-105 self-start md:self-auto"
         >
-          <FiPlus className="w-4 h-4" />
+          <FiPlus className="w-4 h-4 text-black" />
           Add Application
         </button>
       </div>
 
       {/* Filters Bar */}
-      <div className="p-4 rounded-2xl glass-panel border border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 rounded-3xl bg-[#081210]/90 border border-[#00f5a0]/20 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
         {/* Stage Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar max-w-full pb-1">
           <button
             onClick={() => setSelectedStage('')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase transition-all ${
               selectedStage === ''
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-[#00f5a0] text-black shadow-[0_0_15px_rgba(0,245,160,0.4)]'
+                : 'bg-[#040908] text-zinc-400 hover:text-white border border-white/10'
             }`}
           >
             All Stages ({applications.length})
@@ -70,13 +76,13 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
             <button
               key={stage.id}
               onClick={() => setSelectedStage(stage.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 selectedStage === stage.id
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-[#00f5a0] text-black shadow-[0_0_15px_rgba(0,245,160,0.4)]'
+                  : 'bg-[#040908] text-zinc-400 hover:text-white border border-white/10'
               }`}
             >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+              <span className="w-2 h-2 rounded-full bg-[#00f5a0]" />
               {stage.label}
             </button>
           ))}
@@ -87,7 +93,7 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
           <select
             value={selectedEmailStatus}
             onChange={(e) => setSelectedEmailStatus(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+            className="px-3 py-2 bg-[#040908] border border-[#00f5a0]/20 rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#00f5a0]"
           >
             <option value="">All Cold Email Statuses</option>
             {COLD_EMAIL_STATUSES.map(s => (
@@ -98,7 +104,7 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+            className="px-3 py-2 bg-[#040908] border border-[#00f5a0]/20 rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#00f5a0]"
           >
             <option value="-updatedAt">Recently Updated</option>
             <option value="-createdAt">Recently Created</option>
@@ -112,7 +118,7 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
       {isLoading ? (
         <div className="p-8 space-y-4">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-16 bg-slate-900 rounded-xl animate-pulse" />
+            <div key={i} className="h-16 bg-[#081210] rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : applications.length === 0 ? (
@@ -123,43 +129,42 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
           onAction={onOpenCreateModal}
         />
       ) : (
-        <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden shadow-xl">
+        <div className="rounded-3xl bg-[#081210]/90 border border-[#00f5a0]/20 overflow-hidden shadow-2xl backdrop-blur-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-950/80 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-sm text-zinc-300">
+              <thead className="bg-[#040908] text-xs font-bold text-zinc-400 uppercase tracking-wider border-b border-[#00f5a0]/15">
                 <tr>
-                  <th className="px-6 py-4 font-semibold">Company & Job Title</th>
-                  <th className="px-6 py-4 font-semibold">Stage</th>
-                  <th className="px-6 py-4 font-semibold">Cold Email</th>
-                  <th className="px-6 py-4 font-semibold">Location & Salary</th>
-                  <th className="px-6 py-4 font-semibold">Updated</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                  <th className="px-6 py-4">Company & Job Title</th>
+                  <th className="px-6 py-4">Stage</th>
+                  <th className="px-6 py-4">Cold Email</th>
+                  <th className="px-6 py-4">Location & Salary</th>
+                  <th className="px-6 py-4">Updated</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-white/5">
                 {applications.map(app => (
                   <tr
                     key={app._id}
                     onClick={() => onSelectApplication(app)}
-                    className="hover:bg-slate-900/60 cursor-pointer transition-colors group"
+                    className="hover:bg-white/5 cursor-pointer transition-colors group"
                   >
-                    {/* Company & Title */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {app.companyLogo ? (
                           <img
                             src={app.companyLogo}
                             alt={app.company}
-                            className="w-9 h-9 rounded-lg object-contain bg-slate-900 p-1 border border-slate-800"
+                            className="w-9 h-9 rounded-xl object-contain bg-[#040908] p-1 border border-white/10"
                             onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 font-bold text-sm flex items-center justify-center">
+                          <div className="w-9 h-9 rounded-xl bg-[#040908] border border-[#00f5a0]/30 text-[#00f5a0] font-bold text-sm flex items-center justify-center">
                             {app.company ? app.company.charAt(0).toUpperCase() : '?'}
                           </div>
                         )}
                         <div>
-                          <div className="font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5">
+                          <div className="font-bold text-white group-hover:text-[#00f5a0] transition-colors flex items-center gap-1.5">
                             {app.company}
                             {app.jobUrl && (
                               <a
@@ -167,23 +172,22 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-slate-500 hover:text-indigo-400 inline-block"
+                                className="text-zinc-500 hover:text-[#00f5a0] inline-block"
                               >
                                 <FiExternalLink className="w-3.5 h-3.5" />
                               </a>
                             )}
                           </div>
-                          <div className="text-xs text-slate-400 font-medium">{app.title}</div>
+                          <div className="text-xs text-zinc-400 font-medium">{app.title}</div>
                         </div>
                       </div>
                     </td>
 
-                    {/* Stage Dropdown Select */}
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={app.stage}
                         onChange={(e) => moveStageMutation.mutate({ id: app._id, stage: e.target.value })}
-                        className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs font-semibold text-slate-200 focus:outline-none focus:border-indigo-500"
+                        className="px-3 py-1.5 bg-[#040908] border border-[#00f5a0]/30 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#00f5a0]"
                       >
                         {STAGES.map(s => (
                           <option key={s.id} value={s.id}>{s.label}</option>
@@ -191,37 +195,33 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
                       </select>
                     </td>
 
-                    {/* Cold Email Badge */}
                     <td className="px-6 py-4">
                       <ColdEmailBadge statusId={app.coldEmailStatus} />
                     </td>
 
-                    {/* Location & Salary */}
-                    <td className="px-6 py-4 text-xs text-slate-400">
+                    <td className="px-6 py-4 text-xs text-zinc-400">
                       <div>{app.location || 'Remote'}</div>
-                      <div className="font-semibold text-emerald-400 mt-0.5">
+                      <div className="font-bold text-[#00f5a0] mt-0.5">
                         {formatSalary(app.salaryMin, app.salaryMax, app.currency)}
                       </div>
                     </td>
 
-                    {/* Updated Date */}
-                    <td className="px-6 py-4 text-xs text-slate-400">
+                    <td className="px-6 py-4 text-xs text-zinc-400">
                       {formatDate(app.updatedAt)}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => onSelectApplication(app)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-400 rounded-lg hover:bg-slate-800 transition-colors"
-                          title="View / Edit Application Details"
+                          className="p-2 text-zinc-400 hover:text-[#00f5a0] rounded-xl hover:bg-[#040908] transition-colors"
+                          title="View / Edit Details"
                         >
                           <FiEdit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeletingId(app._id)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-800 transition-colors"
+                          className="p-2 text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-[#040908] transition-colors"
                           title="Delete Application"
                         >
                           <FiTrash2 className="w-4 h-4" />
@@ -236,7 +236,6 @@ export const ApplicationsList = ({ onOpenCreateModal, onSelectApplication, searc
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
