@@ -42,6 +42,7 @@ app.use(async (req, res, next) => {
 
 // API Routes
 app.use('/api/auth', require('../server/routes/auth'));
+app.use('/api/jobs', require('../server/routes/jobs'));
 app.use('/api/applications', require('../server/routes/applications'));
 app.use('/api/analytics', require('../server/routes/analytics'));
 app.use('/api/sync', require('../server/routes/sync'));

@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     toast.success('Logged out successfully');
+    window.location.href = '/';
   };
 
   // Update local user state

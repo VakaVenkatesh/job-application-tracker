@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
-import { STAGES, JOB_TYPES } from '../../utils/constants';
+import { STAGES, JOB_TYPES, NEXT_ROUNDS } from '../../utils/constants';
 import { useCreateApplication, useUpdateApplication } from '../../hooks/useApplications';
-import { FiCalendar, FiClock, FiDollarSign, FiBriefcase } from 'react-icons/fi';
-
-const NEXT_ROUNDS = [
-  { id: 'none', label: 'None Scheduled' },
-  { id: 'online_assessment', label: 'Online Assessment / Coding Exam' },
-  { id: 'technical_interview', label: 'Technical Interview (Live Coding)' },
-  { id: 'system_design', label: 'System Design / Architecture' },
-  { id: 'hr_screening', label: 'HR Screening & Culture Fit' },
-  { id: 'managerial', label: 'Managerial / Engineering Director' },
-  { id: 'final_round', label: 'Final Executive / Offer Call' },
-  { id: 'assignment', label: 'Take-home Assignment' }
-];
+import { useJobs } from '../../hooks/useJobs';
+import { FiCalendar, FiClock, FiDollarSign, FiBriefcase, FiCheck, FiSearch, FiLayers } from 'react-icons/fi';
 
 export default function ApplicationFormModal({ isOpen, onClose, initialData = null }) {
   const [formData, setFormData] = useState({
+    jobPosting: '',
     company: '',
     title: '',
     location: 'Remote',
@@ -24,6 +15,7 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
     companyLogo: '',
     salary: '',
     jobType: 'full_time',
+    category: 'Engineering',
     stage: 'applied',
     dateApplied: new Date().toISOString().substring(0, 10),
     nextRoundDate: '',
@@ -34,12 +26,19 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
     description: ''
   });
 
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+
+  // Fetch all available predefined postings for selection
+  const { jobs: predefinedJobs } = useJobs({ limit: 100 });
+
   const createMutation = useCreateApplication();
   const updateMutation = useUpdateApplication();
 
   useEffect(() => {
     if (initialData) {
       setFormData({
+        jobPosting: initialData.jobPosting?._id || initialData.jobPosting || '',
         company: initialData.company || '',
         title: initialData.title || '',
         location: initialData.location || 'Remote',
@@ -47,17 +46,20 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
         companyLogo: initialData.companyLogo || '',
         salary: initialData.salary || '',
         jobType: initialData.jobType || 'full_time',
+        category: initialData.category || 'Engineering',
         stage: initialData.stage || 'applied',
         dateApplied: initialData.dateApplied ? new Date(initialData.dateApplied).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
         nextRoundDate: initialData.nextRoundDate ? new Date(initialData.nextRoundDate).toISOString().substring(0, 10) : '',
         nextRoundType: initialData.nextRoundType || 'none',
         nextRoundNotes: initialData.nextRoundNotes || '',
-        requiredSkills: Array.isArray(initialData.requiredSkills) ? initialData.requiredSkills.join(', ') : '',
-        tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '',
+        requiredSkills: Array.isArray(initialData.requiredSkills) ? initialData.requiredSkills.join(', ') : (initialData.requiredSkills || ''),
+        tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : (initialData.tags || ''),
         description: initialData.description || ''
       });
+      setSelectedJobId(initialData.jobPosting?._id || initialData.jobPosting || '');
     } else {
       setFormData({
+        jobPosting: '',
         company: '',
         title: '',
         location: 'Remote',
@@ -65,6 +67,7 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
         companyLogo: '',
         salary: '',
         jobType: 'full_time',
+        category: 'Engineering',
         stage: 'applied',
         dateApplied: new Date().toISOString().substring(0, 10),
         nextRoundDate: '',
@@ -74,8 +77,36 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
         tags: '',
         description: ''
       });
+      setSelectedJobId('');
+      setJobSearchTerm('');
     }
   }, [initialData, isOpen]);
+
+  const handlePredefinedSelect = (e) => {
+    const jId = e.target.value;
+    setSelectedJobId(jId);
+
+    if (!jId) return;
+
+    const matched = (predefinedJobs || []).find(j => j._id === jId);
+    if (matched) {
+      setFormData(prev => ({
+        ...prev,
+        jobPosting: matched._id,
+        company: matched.company,
+        title: matched.title,
+        location: matched.location || 'Remote',
+        jobUrl: matched.jobUrl || '',
+        companyLogo: matched.companyLogo || '',
+        salary: matched.salary || '',
+        jobType: matched.jobType || 'full_time',
+        category: matched.category || 'Engineering',
+        requiredSkills: Array.isArray(matched.requiredSkills) ? matched.requiredSkills.join(', ') : '',
+        tags: Array.isArray(matched.tags) ? matched.tags.join(', ') : '',
+        description: matched.description || ''
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -109,10 +140,34 @@ export default function ApplicationFormModal({ isOpen, onClose, initialData = nu
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? 'Edit Application Details' : 'Track New Job Application'}
+      title={initialData ? 'Edit Application Details' : 'Track Verified Job Application'}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Predefined Job Selector (when creating new application) */}
+        {!initialData && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#00f5a0]/10 via-[#041510] to-[#08100e] border border-[#00f5a0]/30 space-y-2">
+            <label className="block text-xs font-mono font-bold text-[#00f5a0] flex items-center gap-1.5">
+              <FiLayers className="w-4 h-4" /> SELECT FROM PREDEFINED POSTINGS (70+ VERIFIED ROLES)
+            </label>
+            <p className="text-[11px] text-gray-400 font-mono">
+              Pick a verified role to auto-populate company details, skills, location, and keep your analytics 100% consistent.
+            </p>
+            <select
+              value={selectedJobId}
+              onChange={handlePredefinedSelect}
+              className="w-full px-3.5 py-2.5 bg-[#08100e] border border-[#00f5a0]/40 rounded-xl text-sm text-white focus:outline-none focus:border-[#00f5a0] font-sans"
+            >
+              <option value="">-- Choose a Predefined Job Posting --</option>
+              {(predefinedJobs || []).map(j => (
+                <option key={j._id} value={j._id}>
+                  {j.company} - {j.title} ({j.location}) [{j.salary}]
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Row 1: Company & Job Title */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
