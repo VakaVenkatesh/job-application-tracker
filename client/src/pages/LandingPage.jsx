@@ -29,8 +29,8 @@ const FEATURES = [
   },
   {
     icon: FiAward,
-    title: 'Solo Leveling Hunter Profile',
-    description: 'Transform your career into an RPG progression. Gain EXP points, level up your Hunter Rank from E to S-Rank, and build a verified technical identity.',
+    title: 'Leveling Profile',
+    description: 'Transform your career into an RPG progression. Gain EXP points, level up your Rank and build a verified technical identity.',
     color: '#a855f7',
   },
   {
@@ -90,7 +90,7 @@ export default function LandingPage({ onOpenAuth }) {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
+
             {/* Left Column: Hero Copy */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
