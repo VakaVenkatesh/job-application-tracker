@@ -1,54 +1,86 @@
-import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { FiCheckCircle, FiTrendingUp, FiZap, FiTerminal } from 'react-icons/fi';
+import React, { useState, useRef, useEffect } from 'react';
+import { FiCheckCircle, FiTrendingUp, FiZap } from 'react-icons/fi';
 
 export default function Laptop3D() {
-  const [rotation, setRotation] = useState({ x: 12, y: -22 });
+  const [rotation, setRotation] = useState({ x: 14, y: -20 });
   const [isDragging, setIsDragging] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+
+  // Keep isDraggingRef updated for requestAnimationFrame loop
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
+
+  // Continuous smooth auto-rotation by default when not dragging
+  useEffect(() => {
+    let animationFrameId;
+    let lastTime = performance.now();
+
+    const autoRotate = (currentTime) => {
+      const delta = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+
+      if (!isDraggingRef.current) {
+        setRotation((prev) => ({
+          x: prev.x,
+          y: (prev.y + delta * 22) % 360, // Smooth continuous rotation at ~22 deg/sec
+        }));
+      }
+
+      animationFrameId = requestAnimationFrame(autoRotate);
+    };
+
+    animationFrameId = requestAnimationFrame(autoRotate);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
+    isDraggingRef.current = true;
     startPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
     const deltaX = e.clientX - startPos.current.x;
     const deltaY = e.clientY - startPos.current.y;
+    // Increased sensitivity multiplier (0.9)
     setRotation((prev) => ({
-      x: Math.max(-30, Math.min(35, prev.x - deltaY * 0.4)),
-      y: prev.y + deltaX * 0.4,
+      x: Math.max(-40, Math.min(45, prev.x - deltaY * 0.9)),
+      y: prev.y + deltaX * 0.9,
     }));
     startPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    isDraggingRef.current = false;
   };
 
-  // Touch support for mobile
+  // Touch support for mobile with increased sensitivity
   const handleTouchStart = (e) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
+      isDraggingRef.current = true;
       startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   };
 
   const handleTouchMove = (e) => {
-    if (!isDragging || e.touches.length !== 1) return;
+    if (!isDraggingRef.current || e.touches.length !== 1) return;
     const deltaX = e.touches[0].clientX - startPos.current.x;
     const deltaY = e.touches[0].clientY - startPos.current.y;
     setRotation((prev) => ({
-      x: Math.max(-30, Math.min(35, prev.x - deltaY * 0.4)),
-      y: prev.y + deltaX * 0.4,
+      x: Math.max(-40, Math.min(45, prev.x - deltaY * 0.9)),
+      y: prev.y + deltaX * 0.9,
     }));
     startPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
 
   return (
     <div
-      className="relative w-full max-w-[580px] h-[460px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing"
+      className="relative w-full max-w-[580px] h-[460px] flex items-center justify-center select-none cursor-default"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -61,22 +93,13 @@ export default function Laptop3D() {
       {/* Ambient background glow behind 3D laptop */}
       <div className="absolute inset-0 bg-radial from-[#00f5a0]/15 via-transparent to-transparent blur-3xl pointer-events-none" />
 
-      {/* Floating 360 Rotation Control Tooltip */}
-      <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-[#0d1615]/80 border border-[#00f5a0]/30 text-[11px] font-mono text-[#00f5a0] flex items-center gap-1.5 backdrop-blur-md z-20 shadow-lg pointer-events-none">
-        <span className="w-2 h-2 rounded-full bg-[#00f5a0] animate-ping" />
-        <span>360° Rotatable • Drag to Rotate</span>
-      </div>
-
       {/* 3D Transform Container */}
-      <motion.div
-        className="relative w-[440px] h-[300px] transition-transform ease-out"
-        animate={{
-          rotateX: rotation.x,
-          rotateY: rotation.y,
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      <div
+        className="relative w-[440px] h-[300px] pointer-events-auto"
         style={{
           transformStyle: 'preserve-3d',
+          transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+          transition: isDragging ? 'none' : 'transform 0.05s linear',
         }}
       >
         {/* ================= LAPTOP SCREEN (LID) ================= */}
@@ -101,13 +124,13 @@ export default function Laptop3D() {
 
           {/* Screen Content Interface */}
           <div className="flex-1 rounded-lg bg-[#040807] border border-[#00f5a0]/20 p-2.5 flex flex-col gap-2 overflow-hidden shadow-inner">
-            {/* Top Hunter Status Bar */}
+            {/* Top Status Bar */}
             <div className="flex items-center justify-between border-b border-[#00f5a0]/15 pb-1.5">
               <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/40">
-                  S-RANK MONARCH
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#00f5a0]/20 text-[#00f5a0] border border-[#00f5a0]/40">
+                  LIVE ASPIRANT
                 </span>
-                <span className="text-[10px] font-mono text-white font-semibold">LVL 42</span>
+                <span className="text-[10px] font-mono text-white font-semibold">WORKSPACE</span>
               </div>
               <div className="flex items-center gap-1 text-[9px] text-[#00f5a0] font-mono">
                 <FiZap className="w-3 h-3 text-[#00f5a0]" /> 98% Match Rate
@@ -175,7 +198,7 @@ export default function Laptop3D() {
             <span className="w-4 h-0.5 rounded-full bg-[#00f5a0]/40" />
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

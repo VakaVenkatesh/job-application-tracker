@@ -19,7 +19,7 @@ export const Sidebar = () => {
     { to: '/dashboard', label: 'Aspirant Dashboard', icon: FiPieChart },
     { to: '/board', label: 'Pipeline Board', icon: FiColumns, badge: activeCount },
     { to: '/applications', label: 'Applications List', icon: FiList, badge: totalCount },
-    { to: '/profile', label: 'Hunter Profile & Vault', icon: FiUser, special: true },
+    { to: '/profile', label: 'Profile', icon: FiUser, special: true },
   ];
 
   return (
@@ -70,10 +70,9 @@ export const Sidebar = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center justify-between px-3.5 py-2.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all duration-200 ${
-                isActive
-                  ? 'bg-[#00f5a0] text-black font-bold shadow-[0_0_20px_rgba(0,245,160,0.3)]'
-                  : 'text-gray-400 hover:text-white hover:bg-[#081210]'
+              `flex items-center justify-between px-3.5 py-2.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all duration-200 ${isActive
+                ? 'bg-[#00f5a0] text-black font-bold shadow-[0_0_20px_rgba(0,245,160,0.3)]'
+                : 'text-gray-400 hover:text-white hover:bg-[#081210]'
               }`
             }
           >
@@ -84,9 +83,8 @@ export const Sidebar = () => {
                   <span>{item.label}</span>
                 </div>
                 {item.badge !== undefined && (
-                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                    isActive ? 'bg-black text-[#00f5a0]' : 'bg-[#081210] text-gray-300 border border-white/10'
-                  }`}>
+                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${isActive ? 'bg-black text-[#00f5a0]' : 'bg-[#081210] text-gray-300 border border-white/10'
+                    }`}>
                     {item.badge}
                   </span>
                 )}

@@ -112,17 +112,6 @@ export default function Profile() {
     updateProfile(formData);
   };
 
-  const hunterStats = profile?.hunterStats || {
-    level: 5,
-    rank: 'C-Rank',
-    rankTitle: 'Dungeon Specialist',
-    rankColor: '#00f5a0',
-    exp: 35,
-    nextLevelExp: 50,
-    totalSkills: formData.skills.length,
-    combatPower: 8500
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -137,7 +126,7 @@ export default function Profile() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#00f5a0]/15 pb-6">
         <div>
           <div className="flex items-center gap-2.5 text-[#00f5a0] text-xs font-mono tracking-wider uppercase mb-1">
-            <FiShield className="w-4 h-4" /> Hunter Guild Aspirant Identity
+            <FiShield className="w-4 h-4" /> Aspirant Identity & Vault
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
             Aspirant Profile & Skill Vault
@@ -160,90 +149,72 @@ export default function Profile() {
           ) : (
             <>
               <FiSave className="w-4 h-4" />
-              <span>Save & Update Hunter Rank</span>
+              <span>Save Profile Changes</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Main Grid: Hunter Card Left + Details Editor Right */}
+      {/* Main Grid: Profile Card Left + Details Editor Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* ================= LEFT: SOLO LEVELING HUNTER LICENSE CARD ================= */}
+        {/* ================= LEFT: ASPIRANT IDENTITY CARD ================= */}
         <div className="lg:col-span-5 space-y-6">
           <div
-            className="relative rounded-2xl bg-gradient-to-br from-[#0c1916] via-[#08100e] to-[#040807] border-2 p-6 shadow-2xl overflow-hidden"
+            className="relative rounded-2xl bg-gradient-to-br from-[#0c1916] via-[#08100e] to-[#040807] border-2 border-[#00f5a0]/40 p-6 shadow-2xl overflow-hidden"
             style={{
-              borderColor: hunterStats.rankColor,
-              boxShadow: `0 0 35px ${hunterStats.rankColor}25, inset 0 0 15px ${hunterStats.rankColor}10`
+              boxShadow: '0 0 35px rgba(0, 245, 160, 0.15), inset 0 0 15px rgba(0, 245, 160, 0.05)'
             }}
           >
-            {/* Holographic Watermark Badge */}
-            <div className="absolute top-3 right-3 opacity-15 pointer-events-none">
-              <FiZap className="w-32 h-32 text-white" />
+            {/* Background Accent Badge */}
+            <div className="absolute top-3 right-3 opacity-10 pointer-events-none">
+              <FiZap className="w-32 h-32 text-[#00f5a0]" />
             </div>
 
             {/* License Top Banner */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
               <div className="flex items-center gap-2">
-                <span
-                  className="px-2.5 py-1 rounded text-xs font-black tracking-widest uppercase border"
-                  style={{
-                    backgroundColor: `${hunterStats.rankColor}20`,
-                    color: hunterStats.rankColor,
-                    borderColor: `${hunterStats.rankColor}50`
-                  }}
-                >
-                  {hunterStats.rank}
+                <span className="px-2.5 py-1 rounded text-xs font-black tracking-widest uppercase border bg-[#00f5a0]/15 text-[#00f5a0] border-[#00f5a0]/40">
+                  ASPIRANT
                 </span>
-                <span className="text-xs font-mono text-gray-400">{hunterStats.rankTitle}</span>
+                <span className="text-xs font-mono text-gray-400 capitalize">{formData.experienceLevel || 'Candidate'} Tier</span>
               </div>
               <span className="text-[11px] font-mono text-[#00f5a0] bg-[#00f5a0]/10 px-2 py-0.5 rounded border border-[#00f5a0]/30">
-                OFFICIAL LICENSE
+                ACTIVE PROFILE
               </span>
             </div>
 
-            {/* Hunter Avatar & Info */}
+            {/* User Avatar & Info */}
             <div className="flex items-center gap-4 mb-6">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-black shadow-lg"
-                style={{ backgroundColor: hunterStats.rankColor }}
-              >
-                {formData.name ? formData.name.charAt(0).toUpperCase() : 'H'}
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-black bg-[#00f5a0] shadow-lg">
+                {formData.name ? formData.name.charAt(0).toUpperCase() : 'A'}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-white truncate">{formData.name || 'Anonymous Hunter'}</h3>
-                <p className="text-xs text-[#00f5a0] font-mono truncate">{formData.headline || formData.targetRole}</p>
+                <h3 className="text-xl font-bold text-white truncate">{formData.name || 'Anonymous Candidate'}</h3>
+                <p className="text-xs text-[#00f5a0] font-mono truncate">{formData.headline || formData.targetRole || 'Software Aspirant'}</p>
                 <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                  <FiMapPin className="w-3 h-3 text-gray-500" /> {formData.location || 'Remote'}
+                  <FiMapPin className="w-3 h-3 text-gray-500" /> {formData.location || 'Remote / Hybrid'}
                 </p>
               </div>
             </div>
 
-            {/* EXP & Combat Level Progress */}
-            <div className="space-y-2 bg-[#050c0a] p-3.5 rounded-xl border border-[#00f5a0]/15 mb-6">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-white font-bold flex items-center gap-1.5">
-                  <FiZap className="w-3.5 h-3.5 text-[#00f5a0]" /> Level {hunterStats.level} Hunter
+            {/* Skills & Target Overview Widget */}
+            <div className="space-y-2.5 bg-[#050c0a] p-3.5 rounded-xl border border-[#00f5a0]/15 mb-6 font-mono text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 flex items-center gap-1.5">
+                  <FiZap className="w-3.5 h-3.5 text-[#00f5a0]" /> Equipped Skills
                 </span>
-                <span className="text-[#00f5a0]">EXP: {hunterStats.exp} / {hunterStats.nextLevelExp}</span>
+                <span className="text-white font-bold">{formData.skills.length} Tech Stacks</span>
               </div>
-              <div className="w-full bg-gray-900 rounded-full h-2 overflow-hidden border border-[#00f5a0]/20">
-                <div
-                  className="h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, (hunterStats.exp / hunterStats.nextLevelExp) * 100)}%`,
-                    backgroundColor: hunterStats.rankColor
-                  }}
-                />
-              </div>
-              <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono pt-1">
-                <span>Combat Score: {hunterStats.combatPower?.toLocaleString()} CP</span>
-                <span>Unlocked Skills: {formData.skills.length}</span>
+              <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                <span className="text-gray-400">Target Role</span>
+                <span className="text-[#00f5a0] font-semibold truncate max-w-[180px] text-right">
+                  {formData.targetRole || 'Fullstack Engineer'}
+                </span>
               </div>
             </div>
 
-            {/* Hunter Career Matrix */}
+            {/* Career Pipeline Matrix */}
             <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
               <div className="p-2.5 rounded-xl bg-[#091512] border border-white/5">
                 <p className="text-[10px] text-gray-400 uppercase">Tracked</p>
